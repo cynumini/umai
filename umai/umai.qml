@@ -14,6 +14,14 @@ ApplicationWindow {
         // console.log(tableView.height, tableView.width)
     }
 
+    function toggle_has_ingredient(state) {
+        if (state) {
+            energy.enabled = false;
+        } else {
+            energy.enabled = true;
+        }
+    }
+
     menuBar: MenuBar {
         Menu {
             title: "File"
@@ -69,12 +77,29 @@ ApplicationWindow {
                 selectionModel: ItemSelectionModel {
                     id: ism
                     model: tableView.model
-                    onCurrentRowChanged: {
+                    onCurrentChanged: function (current, _) {
                         for (var i = 0; i < tableView.columns; i++) {
-                            select(tableModel.index(tableView.currentRow, i), ItemSelectionModel.Select);
+                            select(tableModel.index(current.row, i), ItemSelectionModel.Select);
                         }
-                        name.text = tableModel.data(tableModel.index(tableView.currentRow, 0));
-                        energy.text = tableModel.data(tableModel.index(tableView.currentRow, 1));
+                        if (ism.hasSelection) {
+                            name.text = tableModel.data(tableModel.index(current.row, 0));
+                            var has_ingredient_value = tableModel.data(tableModel.index(current.row, 1));
+                            toggle_has_ingredient(has_ingredient_value);
+                            if (has_ingredient_value == true) {
+                                has_ingredient.checkState = Qt.Checked;
+                            }
+                            energy.text = tableModel.data(tableModel.index(current.row, 2));
+                            var id = tableModel.get_id(current.row);
+                            ingredientTableModel.set_food(id);
+                        }
+                    }
+                    onSelectionChanged: function (selected, _) {
+                        if (selected.length == 0) {
+                            edit.visible = false;
+                            clearCurrentIndex();
+                        } else {
+                            edit.visible = true;
+                        }
                     }
                 }
                 delegate: TableViewDelegate {
@@ -83,7 +108,14 @@ ApplicationWindow {
             }
         }
         ColumnLayout {
+            id: edit
+            visible: false
             SplitView.minimumWidth: 50
+            Label {
+                text: "Food"
+                Layout.fillWidth: true
+                font.pixelSize: 24
+            }
             SplitView.preferredWidth: 200
             Label {
                 text: "Name"
@@ -92,6 +124,12 @@ ApplicationWindow {
             TextField {
                 id: name
                 Layout.fillWidth: true
+                onEditingFinished: {
+                    var index = ism.selectedIndexes[0];
+                    if (ism.hasSelection) {
+                        tableModel.setData(index, name.text, Qt.EditRole);
+                    }
+                }
             }
             Label {
                 text: "Energy"
@@ -100,9 +138,75 @@ ApplicationWindow {
             TextField {
                 id: energy
                 Layout.fillWidth: true
+                onEditingFinished: {
+                    var index = ism.selectedIndexes[2];
+                    if (ism.hasSelection) {
+                        tableModel.setData(index, energy.text, Qt.EditRole);
+                    }
+                }
             }
-            Item {
+            CheckBox {
+                id: has_ingredient
+                checked: false
+                text: "Has ingredient"
+                nextCheckState: function () {
+                    var index = ism.selectedIndexes[1];
+                    if (ism.hasSelection) {
+                        var newState = checkState === Qt.Checked ? Qt.Unchecked : Qt.Checked;
+                        var has_ingredient_value = checkState === Qt.Unchecked;
+                        tableModel.setData(index, has_ingredient_value, Qt.EditRole);
+                        toggle_has_ingredient(has_ingredient_value);
+                        return newState;
+                    }
+                }
+            }
+            Label {
+                text: "Ingredients"
+                Layout.fillWidth: true
+                font.pixelSize: 24
+            }
+            GridLayout {
+                columns: 2
+
+                Label {
+                    text: "Ingredient"
+                }
+
+                ComboBox {
+                    Layout.fillWidth: true
+                    editable: true
+                    model: foodListModel
+                }
+
+                Label {
+                    text: "Amount"
+                }
+
+                TextField {
+                    Layout.fillWidth: true
+                    text: "100"
+                }
+            }
+            Button {
+                Layout.fillWidth: true
+                text: "Add"
+                onClicked: function () {
+                // ingredientTableModel.set_food(10);
+                }
+            }
+            Button {
+                Layout.fillWidth: true
+                text: "Delete selected"
+            }
+            TableView {
+                Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.minimumHeight: 100
+                model: ingredientTableModel
+                clip: true
+                delegate: TableViewDelegate {
+                    padding: 2
+                }
             }
         }
     }

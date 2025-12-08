@@ -2,9 +2,10 @@ import sys
 from PySide6.QtCore import QObject, Slot
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
-
 from umai.database import Database
 from umai.table_model import TableModel
+from umai.ingredient_table_model import IngredientTableModel
+from umai.food_list_model import FoodListModel
 
 
 class Logic(QObject):
@@ -26,11 +27,15 @@ def main() -> int:
 
     database = Database()
     table_model = TableModel(database)
+    ingredient_table_model = IngredientTableModel(database)
+    food_list_model = FoodListModel(database)
     logic = Logic(database)
 
     root_context = engine.rootContext()
     root_context.setContextProperty("logic", logic)
     root_context.setContextProperty("tableModel", table_model)
+    root_context.setContextProperty("ingredientTableModel", ingredient_table_model)
+    root_context.setContextProperty("foodListModel", food_list_model)
 
     engine.loadFromModule("umai", "umai")
 
