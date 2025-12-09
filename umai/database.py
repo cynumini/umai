@@ -79,9 +79,24 @@ class Database:
         res = self.cur.execute(sql, (id,))
         return str(res.fetchone()[0])
 
-    # INSERT INTO "main"."food_ingredient"
-    # ("food_id", "ingredient_id", "amount")
-    # VALUES (1, 2, 100);
+    def add_ingredient(self, food_id: int, ingredient_id: int, amount: float):
+        sql = """
+        INSERT INTO "main"."food_ingredient"
+        ("food_id", "ingredient_id", "amount")
+        VALUES (?, ?, ?);
+        """
+        _ = self.cur.execute(sql, (food_id, ingredient_id, amount))
+        self.con.commit()
+
+    def delete_ingredient(self, id: int):
+        sql = 'DELETE FROM "food_ingredient" WHERE "id" = ?'
+        _ = self.cur.execute(sql, (id,))
+        self.con.commit()
+
+    def get_food_energy(self, id: int): 
+        sql = 'SELECT "energy" FROM "food" WHERE "id" = ?'
+        res = self.cur.execute(sql, (id,))
+        return float(res.fetchone()[0])
 
     def __del__(self):
         self.cur.close()
