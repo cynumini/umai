@@ -1,0 +1,7 @@
+src/*.c
+-o out/umai
+-lraylib
+-Wall
+-Wpedantic
+-Wextra
+-g
