@@ -5,13 +5,14 @@ LabelNode label_node_init(const char *text, Vector2 *const screen, const Side si
     return (LabelNode){text, {0, 0, 0, 0}, {0, 0}, screen, side};
 }
 
-void label_node_update(LabelNode *const self, const Vector2 position)
+Vector2 label_node_update(LabelNode *const self, const Vector2 position, const Side side)
 {
     float height = 20;
     float width = MeasureText(self->text, height);
     Result result = calc_rect(position, (Vector2){width, height}, self->side, *self->screen);
     self->rect = result.rect;
     self->position = result.position;
+    return calc_offset(self->rect, side);
 }
 
 void label_node_draw(const LabelNode *const self)

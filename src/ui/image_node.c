@@ -6,7 +6,7 @@ ImageNode image_node_init(const Texture texture, Vector2 *const screen, const Si
     return (ImageNode){texture, {0, 0, 0, 0}, {0, 0}, screen, side, on_click};
 }
 
-void image_node_update(ImageNode *self, const Vector2 position)
+Vector2 image_node_update(ImageNode *self, const Vector2 position, const Side side)
 {
     Vector2 size = {self->texture.width, self->texture.height};
     Result result = calc_rect(position, size, self->side, *self->screen);
@@ -17,6 +17,8 @@ void image_node_update(ImageNode *self, const Vector2 position)
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && CheckCollisionPointRec(GetMousePosition(), self->rect) &&
         self->on_click)
         self->on_click(self);
+
+    return calc_offset(self->rect, side);
 }
 
 void image_node_draw(const ImageNode *const self)

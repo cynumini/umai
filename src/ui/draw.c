@@ -45,24 +45,3 @@ Result calc_rect(const Vector2 position, const Vector2 size, const Side side, co
     }
     return result;
 }
-
-Rectangle draw_label(const char *text, const Vector2 position, const Side side, const Vector2 screen)
-{
-    Result result = calc_rect(position, (Vector2){MeasureText(text, 20), 20}, side, screen);
-    DrawText(text, result.position.x, result.position.y, result.rect.height, BLACK);
-    return result.rect;
-}
-
-Rectangle draw_text_input(const Vector2 position, const Side side, const Vector2 screen)
-{
-    Result result = calc_rect(position, (Vector2){0, 20}, side, screen);
-    DrawRectangleLinesEx(result.rect, 1, BLACK);
-    return result.rect;
-}
-
-Rectangle draw_checkbox(const Vector2 position, const Side side, const Vector2 screen)
-{
-    Result result = calc_rect(position, (Vector2){20, 20}, side, screen);
-    DrawRectangleLinesEx(result.rect, 1, BLACK);
-    return result.rect;
-}

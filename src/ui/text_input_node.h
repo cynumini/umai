@@ -17,7 +17,7 @@ typedef struct TextInputNode
 } TextInputNode;
 
 TextInputNode text_input_node_init(Vector2 *const screen, const Side side);
-void text_input_node_update(TextInputNode *const self, const Vector2 position);
+Vector2 text_input_node_update(TextInputNode *const self, const Vector2 position, const Side side);
 void text_input_node_draw(const TextInputNode *const self);
 
 #endif /* end of include guard: TEXT_INPUT_NODE_H */

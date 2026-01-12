@@ -7,7 +7,7 @@
 
 typedef struct ImageNode ImageNode;
 
-typedef void (*ImageNodeOnClickCallback)(ImageNode *);
+typedef void (*ImageNodeOnClickCallback)(ImageNode *const);
 
 struct ImageNode
 {
@@ -21,7 +21,7 @@ struct ImageNode
 
 ImageNode image_node_init(const Texture texture, Vector2 *const screen, const Side side,
                           ImageNodeOnClickCallback on_click);
-void image_node_update(ImageNode *const self, const Vector2 position);
+Vector2 image_node_update(ImageNode *const self, const Vector2 position, const Side side);
 void image_node_draw(const ImageNode *const self);
 
 #endif // !IMAGE_NODE_H

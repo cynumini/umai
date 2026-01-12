@@ -15,7 +15,7 @@ typedef struct LabelNode
 } LabelNode;
 
 LabelNode label_node_init(const char *text, Vector2 *const screen, const Side side);
-void label_node_update(LabelNode *const label, const Vector2 position);
-void label_node_draw(const LabelNode *const label);
+Vector2 label_node_update(LabelNode *const self, const Vector2 position, const Side side);
+void label_node_draw(const LabelNode *const self);
 
 #endif // LABEL_NODE_H

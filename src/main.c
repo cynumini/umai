@@ -1,76 +1,28 @@
-#include <assert.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "database.h"
+#include "view_add_food.h"
+#include "view_main.h"
 
-#include <raylib.h>
-#include <raymath.h>
-
-#include "button_node.h"
-#include "draw.h"
-#include "image_node.h"
-#include "label_node.h"
-#include "text_input_node.h"
-
-static bool kdialog(char *buffer, size_t buffer_size)
+typedef enum View
 {
-    char *command = "kdialog --getopenfilename ~/ \"Image Files (*.png *.jpg "
-        "*.jpeg *.jxl *.webp)\"";
-    FILE *fpipe = popen(command, "r");
-    assert(fpipe);
-    bool result = false;
-    if (fgets(buffer, buffer_size, fpipe))
-    {
-        size_t len = strlen(buffer);
-        assert(len);
-        buffer[len - 1] = 0;
-        result = true;
-    }
-    pclose(fpipe);
-    return result;
-}
-
-void open_image(ImageNode *image_node)
-{
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-    {
-        char line[FILENAME_MAX];
-        if (kdialog(line, sizeof(line)))
-        {
-            UnloadTexture(image_node->texture);
-            Image image = LoadImage(line);
-            int new_height = 256;
-            int new_width = (new_height * image.width) / image.height;
-            ImageResize(&image, new_width, new_height);
-            image_node->texture = LoadTextureFromImage(image);
-            UnloadImage(image);
-        }
-    }
-}
+    VIEW_ADD_FOOD,
+    VIEW_MAIN
+} View;
 
 int main(void)
 {
-    Vector2 screen = {1280, 720};
-
     SetWindowState(FLAG_WINDOW_RESIZABLE);
+    Vector2 screen = {1280, 720};
     InitWindow(screen.x, screen.y, "umai");
+    sqlite3 *database = database_init();
 
-    Texture texture = LoadTexture("assets/no_image.png");
+    View current_view = VIEW_MAIN;
+
+    ViewAddFood view_add_food;
+    view_add_food_init(&view_add_food, &screen, database);
+    ViewMain view_main;
+    view_main_init(&view_main, &screen, database);
 
     SetTargetFPS(60);
-
-    LabelNode label_basic = label_node_init("Basic", &screen, SIDE_TOP_WIDE);
-    LabelNode label_image = label_node_init("Image", &screen, SIDE_TOP_LEFT);
-    ImageNode image = image_node_init(texture, &screen, SIDE_TOP_WIDE, &open_image);
-    LabelNode label_name = label_node_init("Name", &screen, SIDE_TOP_LEFT);
-    TextInputNode text_input_name = text_input_node_init(&screen, SIDE_TOP_WIDE);
-    LabelNode label_energy = label_node_init("Energy", &screen, SIDE_TOP_LEFT);
-    TextInputNode text_input_energy= text_input_node_init(&screen, SIDE_TOP_WIDE);
-
-    ButtonNode button_cancel = button_node_init("Cancel", &screen, SIDE_BOTTOM_RIGHT, NULL);
-    ButtonNode button_add = button_node_init("Add", &screen, SIDE_BOTTOM_RIGHT, NULL);
-
     while (!WindowShouldClose())
     {
         // Update
@@ -79,83 +31,32 @@ int main(void)
             screen.x = GetScreenWidth();
             screen.y = GetScreenHeight();
         }
-
-        Vector2 offset = screen;
-        button_node_update(&button_cancel, offset);
-        offset = calc_offset(button_cancel.rect, SIDE_BOTTOM_LEFT);
-        button_node_update(&button_add, offset);
-
-        offset = Vector2Zero();
-
-        label_node_update(&label_basic, offset);
-        offset = calc_offset(label_basic.rect, SIDE_BOTTOM_LEFT);
-        label_node_update(&label_image, offset);
-        offset = calc_offset(label_image.rect, SIDE_BOTTOM_LEFT);
-        image_node_update(&image, offset);
-        offset = calc_offset(image.rect, SIDE_BOTTOM_LEFT);
-        label_node_update(&label_name, offset);
-        offset = calc_offset(label_name.rect, SIDE_BOTTOM_LEFT);
-        text_input_node_update(&text_input_name, offset);
-        offset = calc_offset(text_input_name.rect, SIDE_BOTTOM_LEFT);
-        label_node_update(&label_energy, offset);
-        offset = calc_offset(label_energy.rect, SIDE_BOTTOM_LEFT);
-        text_input_node_update(&text_input_energy, offset);
-        offset = calc_offset(text_input_energy.rect, SIDE_BOTTOM_LEFT);
-
+        switch (current_view)
+        {
+        case VIEW_MAIN:
+            view_main_update(&view_main);
+            break;
+        case VIEW_ADD_FOOD:
+            view_add_food_update(&view_add_food);
+            break;
+        }
         // Draw
         BeginDrawing();
         ClearBackground(WHITE);
-
-        // Rectangle rect = draw_label("Energy", offset, SIDE_TOP_LEFT, screen);
-        // offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        Rectangle rect = draw_label("Tags", offset, SIDE_TOP_LEFT, screen);
-        offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        rect = draw_text_input(offset, SIDE_TOP_WIDE, screen);
-        offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        rect = draw_label("Has ingredients", offset, SIDE_TOP_LEFT, screen);
-        offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        rect = draw_checkbox(offset, SIDE_TOP_LEFT, screen);
-        offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        rect = draw_label("Ingredients", offset, SIDE_TOP_WIDE, screen);
-        offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        rect = draw_label("Recipe", offset, SIDE_TOP_LEFT, screen);
-        offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        rect = draw_text_input(offset, SIDE_TOP_WIDE, screen);
-        offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        rect = draw_label("Ingredients", offset, SIDE_TOP_LEFT, screen);
-        offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        rect = draw_text_input(offset, SIDE_TOP_WIDE, screen);
-        offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        rect = draw_text_input(offset, SIDE_TOP_WIDE, screen);
-        offset = calc_offset(rect, SIDE_BOTTOM_LEFT);
-
-        label_node_draw(&label_basic);
-        label_node_draw(&label_image);
-        image_node_draw(&image);
-        label_node_draw(&label_name);
-        text_input_node_draw(&text_input_name);
-        label_node_draw(&label_energy);
-        text_input_node_draw(&text_input_energy);
-
-        button_node_draw(&button_cancel);
-        button_node_draw(&button_add);
-
-        // DrawFPS(0, 0);
+        switch (current_view)
+        {
+        case VIEW_MAIN:
+            view_main_draw(&view_main);
+            break;
+        case VIEW_ADD_FOOD:
+            view_add_food_draw(&view_add_food);
+            break;
+        }
         EndDrawing();
     }
-
-    UnloadTexture(texture);
-
+    database_deinit(database);
+    view_add_food_deinit(&view_add_food);
+    view_main_deinit(&view_main);
     CloseWindow();
     return 0;
 }

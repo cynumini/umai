@@ -5,9 +5,11 @@
 
 #include "draw.h"
 
-typedef void (*ButtonNodeOnClickCallback)();
+typedef struct ButtonNode ButtonNode;
 
-typedef struct ButtonNode
+typedef void (*ButtonNodeOnClickCallback)(ButtonNode *const, void *user_data);
+
+struct ButtonNode
 {
     const char *text;
     Rectangle rect;
@@ -15,11 +17,12 @@ typedef struct ButtonNode
     Vector2 *screen;
     Side side;
     ButtonNodeOnClickCallback on_click;
-} ButtonNode;
+    void *user_data;
+};
 
 ButtonNode button_node_init(const char *text, Vector2 *const screen, const Side side,
                             ButtonNodeOnClickCallback on_click);
-void button_node_update(ButtonNode *const button, const Vector2 position);
-void button_node_draw(const ButtonNode *const button);
+Vector2 button_node_update(ButtonNode *const self, const Vector2 position, const Side side);
+void button_node_draw(const ButtonNode *const self);
 
-#endif // BUTTON_NODE_H
+#endif /* end of include guard: BUTTON_NODE_H */
