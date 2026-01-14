@@ -1,6 +1,8 @@
 #include "database.h"
 #include "view_add_food.h"
 #include "view_main.h"
+#include <raylib.h>
+#include <stdio.h>
 
 typedef enum View
 {
@@ -39,6 +41,14 @@ int main(void)
         case VIEW_ADD_FOOD:
             view_add_food_update(&view_add_food);
             break;
+        }
+        if (IsKeyReleased(KEY_TAB))
+        {
+            if (current_view == VIEW_MAIN)
+                current_view = VIEW_ADD_FOOD;
+            else if (current_view == VIEW_ADD_FOOD)
+                current_view = VIEW_MAIN;
+            view_main.foods = database_select_food(database);
         }
         // Draw
         BeginDrawing();
