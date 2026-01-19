@@ -35,3 +35,19 @@ void __unreachable(const char *file, const int line, const char *func)
     fprintf(stderr, "%s:%d: %s: Reached unreachable code\n.", file, line, func);
     abort();
 }
+
+#define MAX(TYPE)                                                                                                      \
+    TYPE max_##TYPE(TYPE a, TYPE b)                                                                                    \
+    {                                                                                                                  \
+        return a > b ? a : b;                                                                                          \
+    }
+#define MIN(TYPE)                                                                                                      \
+    TYPE min_##TYPE(TYPE a, TYPE b)                                                                                    \
+    {                                                                                                                  \
+        return a < b ? a : b;                                                                                          \
+    }
+
+MAX(int)
+MIN(int)
+MAX(float)
+MIN(float)

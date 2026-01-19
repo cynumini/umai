@@ -3,13 +3,17 @@
 
 #include <assert.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 bool utils_path_exist(const char *path);
 char *read_text(const char *path);
 void __unreachable(const char *file, int line, const char *func);
+int max_int(int a, int b);
+int min_int(int a, int b);
+float max_float(float a, float b);
+float min_float(float a, float b);
 
 #define DYNAMIC_ARRAY_INIT(TYPE, NAME)                                                                                 \
     typedef struct NAME                                                                                                \
@@ -19,19 +23,23 @@ void __unreachable(const char *file, int line, const char *func);
         size_t len;                                                                                                    \
     } NAME
 
+// ARRAY must be pointer
+#define DYNAMIC_ARRAY_DEINIT(ARRAY) free((ARRAY)->items)
+
+// ARRAY must be pointer
 #define DYNAMIC_ARRAY_ADD(ARRAY, VALUE)                                                                                \
     {                                                                                                                  \
-        size_t index = ARRAY->len;                                                                                     \
-        if (index >= ARRAY->capacity)                                                                                  \
+        size_t index = (ARRAY)->len;                                                                                   \
+        if (index >= (ARRAY)->capacity)                                                                                \
         {                                                                                                              \
-            if (ARRAY->capacity == 0)                                                                                  \
-                ARRAY->capacity = 8;                                                                                   \
+            if ((ARRAY)->capacity == 0)                                                                                \
+                (ARRAY)->capacity = 8;                                                                                 \
             else                                                                                                       \
-                ARRAY->capacity *= 2;                                                                                  \
-            ARRAY->items = realloc(ARRAY->items, sizeof(VALUE) * ARRAY->capacity);                                     \
+                (ARRAY)->capacity *= 2;                                                                                \
+            (ARRAY)->items = realloc((ARRAY)->items, sizeof(VALUE) * (ARRAY)->capacity);                               \
         }                                                                                                              \
-        ARRAY->items[index] = VALUE;                                                                                   \
-        ARRAY->len++;                                                                                                  \
+        (ARRAY)->items[index] = VALUE;                                                                                 \
+        (ARRAY)->len++;                                                                                                \
     }
 
 #define ARRAY_LEN(array) (sizeof(array) / sizeof(array[0]))
