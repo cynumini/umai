@@ -1,15 +1,16 @@
 #ifndef UI_H
 #define UI_H
 
-#include "utils.h"
 #include <raylib.h>
 
-// Size & Sizing
+#include "utils.h"
+
+// Size
 typedef enum SizeType
 {
-    SIZE_TYPE_FIXED,
-    SIZE_TYPE_GROW,
     SIZE_TYPE_FIT,
+    SIZE_TYPE_FIXED,
+    SIZE_TYPE_GROW
 } SizeType;
 
 typedef struct Size
@@ -22,12 +23,6 @@ Size size_fixed(int value);
 Size size_grow(void);
 Size size_fit(void);
 
-typedef struct Sizing
-{
-    Size width;
-    Size height;
-} Sizing;
-
 // Padding
 typedef struct Padding
 {
@@ -39,64 +34,114 @@ typedef struct Padding
 
 Padding padding_all(int value);
 
-// Node
-typedef struct Node Node;
-
-typedef void (*NodeDraw)(Node *node);
-
-struct Node
+// Alignment
+typedef enum Alignment
 {
-    Sizing sizing;
+    ALIGNMENT_LEFT_TOP,
+    ALIGNMENT_LEFT_CENTER,
+    ALIGNMENT_LEFT_BOTTOM,
+    ALIGNMENT_CENTER_TOP,
+    ALIGNMENT_CENTER,
+    ALIGNMENT_CENTER_BOTTOM,
+    ALIGNMENT_RIGHT_TOP,
+    ALIGNMENT_RIGHT_CENTER,
+    ALIGNMENT_RIGHT_BOTTOM
+} Alignment;
+
+// Node
+typedef struct OldNode OldNode;
+
+struct OldNode
+{
     Vector2 position;
-    Vector2 actual_position;
-    Padding padding;
-    NodeDraw draw;
+    Size width;
+    Size height;
+    Color color;
+    Rectangle rect;
+    Alignment alignment;
+    void (*calc_fit_width)(OldNode *node);
+    void (*calc_fit_height)(OldNode *node);
+    void (*calc_grow_width)(OldNode *node);
+    void (*calc_grow_height)(OldNode *node);
+    void (*calc_position)(OldNode *node);
+    void (*calc_layout)(OldNode *node);
+    void (*update)(OldNode *node);
+    void (*draw)(const OldNode *node);
 };
 
-// NodeLabel
-typedef struct NodeLabel
-{
-    Node node;
-    const char *text;
-} NodeLabel;
-
-NodeLabel node_label_init(const char *name);
-
-// NodeButton
-typedef struct NodeButton
-{
-    Node node;
-    const char *text;
-} NodeButton;
-
-NodeButton node_button_init(const char *name);
-
-// NodeRectangle
-typedef struct NodeRectangle
-{
-    Node node;
-} NodeRectangle;
-
-// NodeContainer
+// Element
 typedef enum LayoutDirection
 {
     LAYOUT_DIRECTION_LEFT_TO_RIGHT,
     LAYOUT_DIRECTION_TOP_TO_BOTTOM,
-} NodeContainerType;
+} LayoutDirection;
 
-DYNAMIC_ARRAY_INIT(Node *, NodePointerArray);
+DYNAMIC_ARRAY_INIT(OldNode *, NodePointerArray);
 
-typedef struct NodeContainer
+typedef struct Element
 {
-    Node node;
-    NodeContainerType type;
+    OldNode node;
+    Padding padding;
+    LayoutDirection layout_direction;
     int child_gap;
     NodePointerArray children;
-} NodeContainer;
+} OldElement;
 
-// Don't forget to deinit!
-NodeContainer node_container_init(Sizing sizing, NodeContainerType type, Padding padding, int child_gap);
-void node_container_deinit(NodeContainer *self);
-void node_container_add_child(NodeContainer *self, Node *child);
+OldElement element_init(void);
+void element_add_child(OldElement *self, OldNode *node);
+void element_deinit(OldElement *self);
+
+// Text
+DYNAMIC_ARRAY_INIT(const char *, StringArray);
+
+typedef struct Text
+{
+    OldNode node;
+    const char *text;
+    StringArray lines;
+    bool wrap;
+} Text;
+
+Text text_init(const char *text, bool wrap);
+void text_deinit(Text *self);
+
+// Table
+typedef struct TableData
+{
+    void *data;
+    size_t (*get_row_count)(void *data);
+    size_t (*get_column_count)(void *data);
+    void (*get_cell)(void *data, size_t row, size_t column, char *buffer);
+} TableData;
+
+typedef struct Table Table;
+
+struct Table
+{
+    OldNode node;
+    TableData data;
+    int selected_column;
+    // Using inside on_row_selected
+    void *user_data;
+    void (*on_row_selected)(Table *self, int index, void *user_data);
+};
+
+Table table_init(TableData data);
+void table_deinit(Table *self);
+
+// TextInput
+typedef struct TextInput TextInput;
+
+struct TextInput
+{
+    OldNode node;
+    char text[256];
+    // Using inside on_text_changed
+    void *user_data;
+    void (*on_text_changed)(TextInput *self, void *user_data);
+};
+
+TextInput text_input_init(void);
+void text_input_deinit(TextInput *self);
 
 #endif /* end of include guard: UI_H */

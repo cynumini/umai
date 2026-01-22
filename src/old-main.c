@@ -1,74 +1,70 @@
-#include "ui.h"
-#include <raylib.h>
-#include <stddef.h>
 #include <stdlib.h>
+
+#include <raylib.h>
+
+#include "database.h"
+#include "view_add_food.h"
+#include "view_main.h"
+
+typedef enum View
+{
+    VIEW_ADD_FOOD,
+    VIEW_MAIN
+} View;
 
 int old_main(void)
 {
     SetWindowState(FLAG_WINDOW_RESIZABLE);
     InitWindow(1280, 720, "umai");
+    SetExitKey(0);
+    sqlite3 *database = database_init();
+
+    View current_view = VIEW_MAIN;
+
+    ViewMain view_main;
+    view_main_init(&view_main, database);
+    // ViewAddFood view_add_food;
+    // view_add_food_init(&view_add_food, &screen, database);
+
     SetTargetFPS(60);
-
-    Element root = element_init();
-    root.node.width = size_fixed(1280);
-    root.node.height = size_fixed(720);
-    root.padding = padding_all(32);
-    root.child_gap = 32;
-    root.node.color = BLUE;
-    Element a = element_init();
-    a.layout_direction = LAYOUT_DIRECTION_TOP_TO_BOTTOM;
-    a.child_gap = 16;
-    a.padding = padding_all(16);
-    a.node.width = size_grow();
-    a.node.height = size_grow();
-    a.node.color = PINK;
-    Element a_a = element_init();
-    a_a.node.width = size_fixed(100);
-    a_a.node.height = size_fixed(100);
-    a_a.node.color = RED;
-    Element a_b = element_init();
-    a_b.node.width = size_fixed(100);
-    a_b.node.height = size_fixed(75);
-    a_b.node.color = GREEN;
-    Text a_c = text_init(
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam sit amet pretium ligula, at gravida quam. "
-        "Integer iaculis, velit at sagittis ultricies, lacus metus scelerisque turpis, ornare feugiat nulla nisl ac "
-        "erat. Maecenas elementum ultricies libero, sed efficitur lacus molestie non. Nulla ac pretium dolor. "
-        "Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Orci varius "
-        "natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Pellentesque mi lorem, consectetur "
-        "id porttitor id, sollicitudin sit amet enim. Duis eu dolor magna. Nunc ut augue turpis.",
-        true);
-    Element b = element_init();
-    b.node.width = size_grow();
-    b.node.height = size_grow();
-    b.node.color = YELLOW;
-
-    element_add_child(&root, &a.node);
-    element_add_child(&root, &b.node);
-    element_add_child(&a, &a_a.node);
-    element_add_child(&a, &a_b.node);
-    element_add_child(&a, &a_c.node);
-
-    root.node.calc_layout(&root.node);
     while (!WindowShouldClose())
     {
-        if (IsWindowResized())
+        // Update
+        switch (current_view)
         {
-            root.node.width = size_fixed(GetScreenWidth());
-            root.node.height = size_fixed(GetScreenHeight());
-            root.node.calc_layout(&root.node);
+        case VIEW_MAIN:
+            view_main_calc_layout(&view_main);
+            view_main_update(&view_main);
+            break;
+        case VIEW_ADD_FOOD:
+            // view_add_food_update(&view_add_food);
+            break;
         }
-        root.node.update(&root.node);
+        if (IsKeyReleased(KEY_TAB))
+        {
+            if (current_view == VIEW_MAIN)
+                current_view = VIEW_ADD_FOOD;
+            else if (current_view == VIEW_ADD_FOOD)
+                current_view = VIEW_MAIN;
+            view_main.foods = database_select_food(database);
+        }
+        // Draw
         BeginDrawing();
         ClearBackground(WHITE);
-        root.node.draw(&root.node);
+        switch (current_view)
+        {
+        case VIEW_MAIN:
+            view_main_draw(&view_main);
+            break;
+        case VIEW_ADD_FOOD:
+            // view_add_food_draw(&view_add_food);
+            break;
+        }
         EndDrawing();
     }
+    database_deinit(database);
+    // view_add_food_deinit(&view_add_food);
+    view_main_deinit(&view_main);
     CloseWindow();
-
-    element_deinit(&root);
-    element_deinit(&a);
-    text_deinit(&a_c);
-
     return EXIT_SUCCESS;
 }

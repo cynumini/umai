@@ -5,7 +5,7 @@
 #include <sqlite3.h>
 
 #include "database.h"
-#include "ui.h"
+#include "old-ui.h"
 
 typedef struct ViewMain
 {
@@ -15,10 +15,14 @@ typedef struct ViewMain
     // UI
     Size width;
     Size height;
-    Element root;
-    Element element_header;
+    OldElement root;
+    OldElement element_header;
     Text text_header;
+    OldElement main;
     Table table;
+    OldElement sidebar;
+    Text name;
+    TextInput text_input_name;
 } ViewMain;
 
 void view_main_init(ViewMain *self, sqlite3 *database);

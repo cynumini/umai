@@ -2,68 +2,39 @@
 
 #include <raylib.h>
 
-#include "database.h"
-#include "view_add_food.h"
-#include "view_main.h"
+#include "ui.h"
 
-typedef enum View
+int main(int argc, char *argv[])
 {
-    VIEW_ADD_FOOD,
-    VIEW_MAIN
-} View;
+    (void)argc;
+    (void)argv;
 
-int main(void)
-{
     SetWindowState(FLAG_WINDOW_RESIZABLE);
     InitWindow(1280, 720, "umai");
-    sqlite3 *database = database_init();
-
-    View current_view = VIEW_MAIN;
-
-    ViewMain view_main;
-    view_main_init(&view_main, database);
-    // ViewAddFood view_add_food;
-    // view_add_food_init(&view_add_food, &screen, database);
-
+    SetExitKey(0);
     SetTargetFPS(60);
+
+    Context ctx = context_create();
+
+    NODE(&ctx, {.color = RED})
+    {
+        NODE(&ctx, {.color = GREEN});
+        NODE(&ctx, {.color = BLUE});
+    }
+
     while (!WindowShouldClose())
     {
         // Update
-        switch (current_view)
-        {
-        case VIEW_MAIN:
-            view_main_calc_layout(&view_main);
-            view_main_update(&view_main);
-            break;
-        case VIEW_ADD_FOOD:
-            // view_add_food_update(&view_add_food);
-            break;
-        }
-        if (IsKeyReleased(KEY_TAB))
-        {
-            if (current_view == VIEW_MAIN)
-                current_view = VIEW_ADD_FOOD;
-            else if (current_view == VIEW_ADD_FOOD)
-                current_view = VIEW_MAIN;
-            view_main.foods = database_select_food(database);
-        }
+
         // Draw
         BeginDrawing();
         ClearBackground(WHITE);
-        switch (current_view)
-        {
-        case VIEW_MAIN:
-            view_main_draw(&view_main);
-            break;
-        case VIEW_ADD_FOOD:
-            // view_add_food_draw(&view_add_food);
-            break;
-        }
         EndDrawing();
     }
-    database_deinit(database);
-    // view_add_food_deinit(&view_add_food);
-    view_main_deinit(&view_main);
+
+    context_destroy(&ctx);
+
     CloseWindow();
+
     return EXIT_SUCCESS;
 }
