@@ -5,3 +5,4 @@ src/*.c
 -Wpedantic
 -Wextra
 -g
+-Isakana/include

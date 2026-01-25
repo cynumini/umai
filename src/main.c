@@ -1,8 +1,13 @@
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <raylib.h>
 
 #include "ui.h"
+
+#include <SKN/arena.h>
+
 
 int main(int argc, char *argv[])
 {
@@ -10,17 +15,23 @@ int main(int argc, char *argv[])
     (void)argv;
 
     SetWindowState(FLAG_WINDOW_RESIZABLE);
+
     InitWindow(1280, 720, "umai");
-    SetExitKey(0);
+
+    // SetExitKey(0);
     SetTargetFPS(60);
 
-    Context ctx = context_create();
+    Arena arena = arena_create(MB(1));
+    Context ctx = context_create(&arena);
+    (void)ctx;
 
-    NODE(&ctx, {.color = RED})
+    NODE(&ctx, {.id = "1", .color = RED})
     {
-        NODE(&ctx, {.color = GREEN});
-        NODE(&ctx, {.color = BLUE});
+        NODE(&ctx, {.id = "1.1", .color = GREEN});
+        NODE(&ctx, {.id = "1.2", .color = BLUE});
     }
+
+    node_print(ctx.current, 0);
 
     while (!WindowShouldClose())
     {
@@ -31,8 +42,10 @@ int main(int argc, char *argv[])
         ClearBackground(WHITE);
         EndDrawing();
     }
-
-    context_destroy(&ctx);
+    //
+    // // Do I need it, since arena destroy already destory all context data?
+    // // context_destroy(&ctx);
+    arena_destroy(&arena);
 
     CloseWindow();
 

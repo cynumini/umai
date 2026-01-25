@@ -3,8 +3,7 @@
 
 #include <raylib.h>
 
-#include "arena.h"
-#include "list.h"
+#include "SKN/arena.h"
 
 struct Context
 {
@@ -13,24 +12,30 @@ struct Context
 };
 typedef struct Context Context;
 
-Context context_create(void);
-void context_destroy(Context *context);
+Context context_create(Arena *arena);
 
 // Node
 typedef struct Node Node;
-
-LIST_DEFINE(ListNode, list_node, Node *)
+typedef struct NodeChildren NodeChildren;
 
 struct Node
 {
+    const char *id;
     Color color;
     Node *parent;
-    ListNode *children;
+    NodeChildren *children;
+};
+
+struct NodeChildren
+{
+    Node *value;
+    NodeChildren *next;
 };
 
 void node_open(Context *ctx, Node node);
 void node_close(Context *ctx);
 void node_add_child(Context *ctx, Node *self, Node *child);
+void node_print(Node *node, int level);
 
 #define NODE(CONTEXT, ...)                                                                                             \
     for (size_t i = (node_open(CONTEXT, (Node)__VA_ARGS__), 0); i < 1; i = 1, node_close(CONTEXT))
