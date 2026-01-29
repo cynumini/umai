@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include <raylib.h>
@@ -8,6 +7,14 @@
 
 #include <SKN/arena.h>
 
+void test(Context *ctx, const char *id)
+{
+    NODE(ctx, {.id = id, .color = GREEN, .padding = padding_all(8), .child_gap = 8, .height = size_grow()})
+    {
+        NODE(ctx, {.color = BLUE, .width = size_fixed(200), .height = size_fixed(200)});
+        NODE(ctx, {.color = GOLD, .width = size_fixed(100), .height = size_grow()});
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -23,15 +30,21 @@ int main(int argc, char *argv[])
 
     Arena arena = arena_create(MB(1));
     Context ctx = context_create(&arena);
-    (void)ctx;
 
-    NODE(&ctx, {.id = "1", .color = RED})
+    NODE(&ctx, {
+                   .color = RED,
+                   .padding = padding_all(8),
+                   .child_gap = 8,
+                   .width = size_fixed(1280),
+                   .height = size_fixed(720),
+               })
     {
-        NODE(&ctx, {.id = "1.1", .color = GREEN});
-        NODE(&ctx, {.id = "1.2", .color = BLUE});
+        test(&ctx, "a");
+        test(&ctx, "b");
     }
 
     node_print(ctx.current, 0);
+    context_calc_layout(&ctx);
 
     while (!WindowShouldClose())
     {
@@ -40,11 +53,10 @@ int main(int argc, char *argv[])
         // Draw
         BeginDrawing();
         ClearBackground(WHITE);
+        context_draw(&ctx);
         EndDrawing();
     }
-    //
-    // // Do I need it, since arena destroy already destory all context data?
-    // // context_destroy(&ctx);
+
     arena_destroy(&arena);
 
     CloseWindow();

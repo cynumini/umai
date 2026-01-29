@@ -23,16 +23,16 @@ Size size_fixed(int value);
 Size size_grow(void);
 Size size_fit(void);
 
-// Padding
-typedef struct Padding
-{
-    int top;
-    int left;
-    int bottom;
-    int right;
-} Padding;
-
-Padding padding_all(int value);
+// // Padding
+// typedef struct Padding
+// {
+//     int top;
+//     int left;
+//     int bottom;
+//     int right;
+// } Padding;
+//
+// Padding padding_all(int value);
 
 // Alignment
 typedef enum Alignment

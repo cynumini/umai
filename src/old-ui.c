@@ -26,11 +26,6 @@ Size size_fit(void)
     return (Size){SIZE_TYPE_FIT, 0};
 }
 
-// Padding
-Padding padding_all(int value)
-{
-    return (Padding){value, value, value, value};
-}
 
 // Element
 static void element_fit_width(OldNode *root)
