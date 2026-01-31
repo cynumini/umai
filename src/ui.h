@@ -1,76 +1,133 @@
 #ifndef UI_H
 #define UI_H
 
+#include <SKN/arena.h>
 #include <raylib.h>
 
-#include <SKN/arena.h>
-#include <SKN/list.h>
+typedef struct UI UI;
+typedef struct Paddings Paddings;
+typedef struct Sides Sides;
+typedef struct Size Size;
+typedef struct Node Node;
+typedef struct Contrainer Contrainer;
+typedef struct ContainerOptions ContainerOptions;
+typedef struct Text Text;
 
-struct Context
+struct UI
 {
-    struct Node *current;
-    Arena *arena;
+    Arena arena;
+    Node *current;
 };
-typedef struct Context Context;
 
-Context context_create(Arena *arena);
-void context_draw(Context *ctx);
-void context_calc_layout(Context *ctx);
+void ui_init(void);
+void ui_deinit(void);
 
-// Padding
-typedef struct Padding
+typedef enum Alignment
 {
-    int top;
-    int left;
-    int bottom;
-    int right;
-} Padding;
+    ALIGNMENT_LEFT_TOP,
+    ALIGNMENT_LEFT_CENTER,
+    ALIGNMENT_LEFT_BOTTOM,
+    ALIGNMENT_CENTER_TOP,
+    ALIGNMENT_CENTER,
+    ALIGNMENT_CENTER_BOTTOM,
+    ALIGNMENT_RIGHT_TOP,
+    ALIGNMENT_RIGHT_CENTER,
+    ALIGNMENT_RIGHT_BOTTOM
+} Alignment;
 
-Padding padding_all(int value);
+struct Sides
+{
+    u32 top;
+    u32 left;
+    u32 bottom;
+    u32 right;
+};
 
-// Size
+Paddings sides_all(int value);
+
 typedef enum SizeType
 {
     SIZE_TYPE_FIT,
     SIZE_TYPE_GROW,
-    SIZE_TYPE_FIXED,
+    SIZE_TYPE_FIXED
 } SizeType;
 
-typedef struct Size
+struct Size
 {
     SizeType type;
-    float value;
-} Size;
+    u32 value;
+};
 
-Size size_fit(void);
-Size size_grow(void);
-Size size_fixed(float value);
-
-// Node
-typedef struct Node Node;
-
-LIST_DEFINE(Node *, NodePtrList);
+void size_fit(void);
+void size_grow(void);
+void size_fixed(u32 value);
 
 struct Node
 {
+    const char *class;
     const char *id;
-    Color color;
-    Padding padding;
-    float child_gap;
+    Node *parent;
+
+    Alignment alignment;
+    Color background;
+    Color border;
+    Color foreground;
+    Sides margins;
+    Sides paddings;
     Size width;
     Size height;
+    bool is_hidden;
+
+    void (*fit_width)(Node *self);
+    void (*fit_height)(Node *self);
+    void (*grow_width)(Node *self);
+    void (*grow_height)(Node *self);
+    void (*position)(Node *self);
+    void (*add_child)(Node *self, Node *child);
+    void (*update)(Node *self);
+    void (*draw)(Node *self);
+
     Rectangle rect;
-    Node *parent;
-    NodePtrList children;
 };
 
-void node_open(Context *ctx, Node node);
-void node_close(Context *ctx);
-void node_print(Node *node, int level);
-void node_draw(Node *node);
-void node_calc_layout(Context *ctx, Node *node);
+void node_add_child(Node *self, Node *child);
 
-#define NODE(CONTEXT, ...)                                                                                             \
-    for (size_t i = (node_open(CONTEXT, (Node)__VA_ARGS__), 0); i < 1; i = 1, node_close(CONTEXT))
+typedef enum LayoutDirection
+{
+    LAYOUT_DIRECTION_LEFT_TO_RIGHT,
+    LAYOUT_DIRECTION_TOP_TO_BOTTOM,
+} LayoutDirection;
+
+struct Contrainer
+{
+    Node node;
+    LayoutDirection layout_direction;
+    i32 child_gap;
+    // NodePtrArray children;
+};
+
+struct ContainerOptions
+{
+    const char *id;
+};
+
+void container_open(ContainerOptions options);
+void container_close(void);
+
+#define CONTRAINER(...)                                                                                                \
+    for (usize i = (container_open((ContainerOptions)__VA_ARGS__), 0); i < 1; container_close(), i = 1)
+
+struct Text
+{
+    Node node;
+    char *text;
+    i32 size;
+};
+
+// TODO: Nodes I will probably need:
+// - Button
+// - ScrollView
+// - ComboBox
+// - Table
 
 #endif /* end of include guard: UI_H */
