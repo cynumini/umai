@@ -2,10 +2,10 @@
 #define UI_H
 
 #include <SKN/arena.h>
+#include <SKN/array.h>
 #include <raylib.h>
 
 typedef struct UI UI;
-typedef struct Paddings Paddings;
 typedef struct Sides Sides;
 typedef struct Size Size;
 typedef struct Node Node;
@@ -21,6 +21,9 @@ struct UI
 
 void ui_init(void);
 void ui_deinit(void);
+void ui_draw(void);
+void ui_resize(void);
+void ui_print_tree(void);
 
 typedef enum Alignment
 {
@@ -43,7 +46,7 @@ struct Sides
     u32 right;
 };
 
-Paddings sides_all(int value);
+Sides sides_all(int value);
 
 typedef enum SizeType
 {
@@ -58,9 +61,11 @@ struct Size
     u32 value;
 };
 
-void size_fit(void);
-void size_grow(void);
-void size_fixed(u32 value);
+Size size_fit(void);
+Size size_grow(void);
+Size size_fixed(u32 value);
+
+DEFINE_DYNAMIC_ARRAY(NodePtrArray, Node *);
 
 struct Node
 {
@@ -78,19 +83,18 @@ struct Node
     Size height;
     bool is_hidden;
 
+    void (*add_child)(Node *self, Node *child);
+    NodePtrArray *(*get_children)(Node *self);
     void (*fit_width)(Node *self);
     void (*fit_height)(Node *self);
     void (*grow_width)(Node *self);
     void (*grow_height)(Node *self);
     void (*position)(Node *self);
-    void (*add_child)(Node *self, Node *child);
     void (*update)(Node *self);
     void (*draw)(Node *self);
 
     Rectangle rect;
 };
-
-void node_add_child(Node *self, Node *child);
 
 typedef enum LayoutDirection
 {
@@ -103,12 +107,17 @@ struct Contrainer
     Node node;
     LayoutDirection layout_direction;
     i32 child_gap;
-    // NodePtrArray children;
+    NodePtrArray children;
 };
 
 struct ContainerOptions
 {
     const char *id;
+    Color background;
+    Size width;
+    Size height;
+    Sides paddings;
+    i32 child_gap;
 };
 
 void container_open(ContainerOptions options);

@@ -5,15 +5,15 @@
 #include <SKN/arena.h>
 #include <stdlib.h>
 
-// void test(Context *ctx, const char *id)
-// {
-//     NODE(ctx, {.id = id, .color = GREEN, .padding = padding_all(8), .child_gap = 8, .height = size_grow()})
-//     {
-//         NODE(ctx, {.color = BLUE, .width = size_fixed(200), .height = size_fixed(200)});
-//         NODE(ctx, {.color = GOLD, .width = size_fixed(100), .height = size_grow()});
-//     }
-// }
-//
+void test(const char *id)
+{
+    CONTRAINER({.id = id, .background = GREEN, .paddings = sides_all(8), .child_gap = 8, .height = size_grow()})
+    {
+        CONTRAINER({.background = BLUE, .width = size_fixed(200), .height = size_fixed(200)});
+        CONTRAINER({.background = GOLD, .width = size_fixed(100), .height = size_grow()});
+    }
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -28,28 +28,15 @@ int main(int argc, char *argv[])
 
     ui_init();
 
-    CONTRAINER({0})
+    CONTRAINER({.background = RED, .paddings = sides_all(10), .child_gap = 8})
     {
-        CONTRAINER({0});
-        CONTRAINER({0});
+        CONTRAINER({.width = size_fixed(256), .height = size_fixed(256), .background = GREEN});
+        CONTRAINER({.width = size_fixed(128), .height = size_fixed(128), .background = BLUE});
+        CONTRAINER({.width = size_fixed(128), .height = size_grow(), .background = YELLOW});
+        test("test");
     }
-    // Arena arena = arena_create(MB(1));
-    // UI ui = context_create(&arena);
 
-    //     NODE(&ctx, {
-    //                    .color = RED,
-    //                    .padding = padding_all(8),
-    //                    .child_gap = 8,
-    //                    .width = size_fixed(1280),
-    //                    .height = size_fixed(720),
-    //                })
-    //     {
-    //         test(&ctx, "a");
-    //         test(&ctx, "b");
-    //     }
-    //
-    //     node_print(ctx.current, 0);
-    //     context_calc_layout(&ctx);
+    ui_print_tree();
 
     while (!WindowShouldClose())
     {
@@ -59,7 +46,7 @@ int main(int argc, char *argv[])
         BeginDrawing();
         {
             ClearBackground(WHITE);
-            //             context_draw(&ctx);
+            ui_draw();
         }
         EndDrawing();
     }
