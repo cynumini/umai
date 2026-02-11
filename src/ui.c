@@ -1,7 +1,12 @@
 #include "ui.h"
-#include <SKN/math.h>
+#include "SKN/arena.h"
+
 #include <math.h>
+#include <raylib.h>
 #include <stdio.h>
+
+#include <SKN/math.h>
+#include <raymath.h>
 
 static UI ui = {0};
 
@@ -47,7 +52,7 @@ static void node_fit_width(Node *self)
 {
     if (self->fit_width != NULL)
     {
-        self->fit_width(self);
+        self->rect.width = self->fit_width(self);
     }
 }
 
@@ -124,7 +129,7 @@ static NodePtrArray *container_get_children(Node *node)
     return &self->children;
 }
 
-static void container_fit_width(Node *node)
+static u32 container_fit_width(Node *node)
 {
     Contrainer *self = (Contrainer *)node;
 
@@ -135,9 +140,10 @@ static void container_fit_width(Node *node)
 
     if (node->width.type == SIZE_TYPE_FIXED)
     {
-        node->rect.width = node->width.value;
+        return node->width.value;
     }
-    else
+
+    if (self->direction == DIRECTION_LEFT_TO_RIGHT)
     {
         f32 total_width = node->paddings.left + node->paddings.right;
         if (self->children.len > 0)
@@ -148,8 +154,15 @@ static void container_fit_width(Node *node)
         {
             total_width += self->children.items[i]->rect.width;
         }
-        node->rect.width = total_width;
+        return total_width;
     }
+    // DIRECTION_TOP_TO_BOTTOM
+    f32 max_width = 0;
+    for (usize i = 0; i < self->children.len; i++)
+    {
+        max_width = MAX(self->children.items[i]->rect.width, max_width);
+    }
+    return max_width + node->paddings.left + node->paddings.right;
 }
 
 static void container_fit_height(Node *node)
@@ -164,8 +177,10 @@ static void container_fit_height(Node *node)
     if (node->height.type == SIZE_TYPE_FIXED)
     {
         node->rect.height = node->height.value;
+        return;
     }
-    else
+
+    if (self->direction == DIRECTION_LEFT_TO_RIGHT)
     {
         f32 max_height = 0;
         for (usize i = 0; i < self->children.len; i++)
@@ -173,6 +188,19 @@ static void container_fit_height(Node *node)
             max_height = MAX(self->children.items[i]->rect.height, max_height);
         }
         node->rect.height = max_height + node->paddings.top + node->paddings.bottom;
+    }
+    else
+    {
+        f32 total_height = node->paddings.top + node->paddings.bottom;
+        if (self->children.len > 0)
+        {
+            total_height += (self->children.len - 1) * self->child_gap;
+        }
+        for (usize i = 0; i < self->children.len; i++)
+        {
+            total_height += self->children.items[i]->rect.height;
+        }
+        node->rect.height = total_height;
     }
 }
 
@@ -184,50 +212,65 @@ static void container_grow_width(Node *node)
     remaining_width -= node->paddings.left + node->paddings.right;
     ArenaSave arena_save = arena_quick_save(&ui.arena);
     NodePtrArray growable = {0};
-    if (self->children.len > 0)
-    {
-        remaining_width -= self->child_gap * (self->children.len - 1);
-    }
 
-    for (usize i = 0; i < self->children.len; i++)
+    if (self->direction == DIRECTION_LEFT_TO_RIGHT)
     {
-        Node *child = self->children.items[i];
-        remaining_width -= child->rect.width;
-        if (child->width.type == SIZE_TYPE_GROW)
+        if (self->children.len > 0)
         {
-            node_ptr_array_add(&ui.arena, &growable, child);
+            remaining_width -= self->child_gap * (self->children.len - 1);
         }
-    }
 
-    while (remaining_width > 0 && growable.len > 0)
-    {
-        f32 smallest = growable.items[0]->rect.width;
-        f32 second_smallest = INFINITY;
-        f32 width_to_add = remaining_width;
-        for (usize i = 0; i < growable.len; i++)
+        for (usize i = 0; i < self->children.len; i++)
         {
-            Node *child = growable.items[i];
-            if (child->rect.width < smallest)
+            Node *child = self->children.items[i];
+            remaining_width -= child->rect.width;
+            if (child->width.type == SIZE_TYPE_GROW)
             {
-                second_smallest = smallest;
-                smallest = child->rect.width;
-            }
-            if (child->rect.width > smallest)
-            {
-                second_smallest = MIN(second_smallest, child->rect.width);
-                width_to_add = second_smallest - smallest;
+                node_ptr_array_add(&ui.arena, &growable, child);
             }
         }
-        width_to_add = MIN(width_to_add, remaining_width / growable.len);
-        if (width_to_add == 0)
-            break;
-        for (usize i = 0; i < growable.len; i++)
+
+        while (remaining_width > 0 && growable.len > 0)
         {
-            Node *child = growable.items[i];
-            if (child->rect.width == smallest)
+            f32 smallest = growable.items[0]->rect.width;
+            f32 second_smallest = INFINITY;
+            f32 width_to_add = remaining_width;
+            for (usize i = 0; i < growable.len; i++)
             {
-                child->rect.width += width_to_add;
-                remaining_width -= width_to_add;
+                Node *child = growable.items[i];
+                if (child->rect.width < smallest)
+                {
+                    second_smallest = smallest;
+                    smallest = child->rect.width;
+                }
+                if (child->rect.width > smallest)
+                {
+                    second_smallest = MIN(second_smallest, child->rect.width);
+                    width_to_add = second_smallest - smallest;
+                }
+            }
+            width_to_add = MIN(width_to_add, remaining_width / growable.len);
+            if (width_to_add == 0)
+                break;
+            for (usize i = 0; i < growable.len; i++)
+            {
+                Node *child = growable.items[i];
+                if (child->rect.width == smallest)
+                {
+                    child->rect.width += width_to_add;
+                    remaining_width -= width_to_add;
+                }
+            }
+        }
+    }
+    else if (self->direction == DIRECTION_TOP_TO_BOTTOM)
+    {
+        for (usize i = 0; i < self->children.len; i++)
+        {
+            Node *child = self->children.items[i];
+            if (child->width.type == SIZE_TYPE_GROW)
+            {
+                child->rect.width = remaining_width;
             }
         }
     }
@@ -243,17 +286,73 @@ static void container_grow_width(Node *node)
 static void container_grow_height(Node *node)
 {
     Contrainer *self = (Contrainer *)node;
-    float remaining_height = node->rect.height;
+    f32 remaining_height = node->rect.height;
     remaining_height -= node->paddings.top + node->paddings.bottom;
+    ArenaSave arena_save = arena_quick_save(&ui.arena);
+    NodePtrArray growable = {0};
 
-    for (usize i = 0; i < self->children.len; i++)
+    if (self->direction == DIRECTION_LEFT_TO_RIGHT)
     {
-        Node *child = self->children.items[i];
-        if (child->height.type == SIZE_TYPE_GROW)
+        for (usize i = 0; i < self->children.len; i++)
         {
-            child->rect.height = remaining_height;
+            Node *child = self->children.items[i];
+            if (child->height.type == SIZE_TYPE_GROW)
+            {
+                child->rect.height = remaining_height;
+            }
         }
     }
+    else if (self->direction == DIRECTION_TOP_TO_BOTTOM)
+    {
+        if (self->children.len > 0)
+        {
+            remaining_height -= self->child_gap * (self->children.len - 1);
+        }
+
+        for (usize i = 0; i < self->children.len; i++)
+        {
+            Node *child = self->children.items[i];
+            remaining_height -= child->rect.height;
+            if (child->height.type == SIZE_TYPE_GROW)
+            {
+                node_ptr_array_add(&ui.arena, &growable, child);
+            }
+        }
+        while (remaining_height > 0 && growable.len > 0)
+        {
+            f32 smallest = growable.items[0]->rect.height;
+            f32 second_smallest = INFINITY;
+            f32 height_to_add = remaining_height;
+            for (usize i = 0; i < growable.len; i++)
+            {
+                Node *child = growable.items[i];
+                if (child->rect.height < smallest)
+                {
+                    second_smallest = smallest;
+                    smallest = child->rect.height;
+                }
+                if (child->rect.height > smallest)
+                {
+                    second_smallest = MIN(second_smallest, child->rect.height);
+                    height_to_add = second_smallest - smallest;
+                }
+            }
+            height_to_add = MIN(height_to_add, remaining_height / growable.len);
+            if (height_to_add == 0)
+                break;
+            for (usize i = 0; i < growable.len; i++)
+            {
+                Node *child = growable.items[i];
+                if (child->rect.height == smallest)
+                {
+                    child->rect.height += height_to_add;
+                    remaining_height -= height_to_add;
+                }
+            }
+        }
+    }
+
+    arena_quick_load(&ui.arena, arena_save);
 
     for (usize i = 0; i < self->children.len; i++)
     {
@@ -265,17 +364,66 @@ static void container_position(Node *node)
 {
     Contrainer *self = (Contrainer *)node;
 
-    float x_offset = node->rect.x + node->paddings.right;
-    float y_offset = node->rect.y + node->paddings.top;
+    f32 left_offset = node->rect.x + node->paddings.right;
+    f32 top_offset = node->rect.y + node->paddings.top;
+
+    f32 remaining_width = node->rect.width;
+    f32 remaining_height = node->rect.width;
 
     for (usize i = 0; i < self->children.len; i++)
     {
         Node *child = self->children.items[i];
+        remaining_width -= child->rect.width;
+        remaining_height -= child->rect.height;
+    }
 
-        child->rect.x = x_offset;
-        child->rect.y = y_offset;
-
-        x_offset += child->rect.width + self->child_gap;
+    if (self->direction == DIRECTION_LEFT_TO_RIGHT)
+    {
+        if (node->alignment == ALIGNMENT_CENTER)
+        {
+            left_offset += remaining_width / 2;
+        }
+        for (usize i = 0; i < self->children.len; i++)
+        {
+            Node *child = self->children.items[i];
+            Vector2 child_position = {0};
+            child_position.x += left_offset;
+            if (node->alignment == ALIGNMENT_CENTER)
+            {
+                child_position.y = (node->rect.height - child->rect.height) / 2;
+            }
+            else
+            {
+                child_position.y += top_offset;
+            }
+            child->rect.x = child_position.x;
+            child->rect.y = child_position.y;
+            left_offset += child->rect.width + self->child_gap;
+        }
+    }
+    else if (self->direction == DIRECTION_TOP_TO_BOTTOM)
+    {
+        if (node->alignment == ALIGNMENT_CENTER)
+        {
+            top_offset += remaining_height / 2;
+        }
+        for (usize i = 0; i < self->children.len; i++)
+        {
+            Node *child = self->children.items[i];
+            Vector2 child_position = {0};
+            if (node->alignment == ALIGNMENT_CENTER)
+            {
+                child_position.x = (node->rect.width - child->rect.width) / 2;
+            }
+            else
+            {
+                child_position.x += left_offset;
+            }
+            child_position.y += top_offset;
+            child->rect.x = child_position.x;
+            child->rect.y = child_position.y;
+            top_offset += child->rect.height + self->child_gap;
+        }
     }
 
     for (usize i = 0; i < self->children.len; i++)
@@ -298,6 +446,7 @@ void container_open(ContainerOptions options)
 {
     Contrainer *self = ARENA_PUSH_STRUCT_ZERO(&ui.arena, Contrainer);
     self->child_gap = options.child_gap;
+    self->direction = options.direction;
     self->node.id = options.id;
     self->node.background = options.background;
     self->node.width = options.width;
@@ -331,6 +480,44 @@ void container_close(void)
     else
     {
         ui_resize();
+    }
+}
+
+static u32 text_fit_width(Node *node)
+{
+    Text *self = (Text *)node;
+    return MeasureText(self->text, self->size);
+}
+
+static void text_draw(Node *node) {
+    Text *self = (Text *)node;
+    DrawText(self->text, node->rect.x, node->rect.y, self->size, BLACK);
+}
+
+void text_open(TextOptions options)
+{
+    Text *self = ARENA_PUSH_STRUCT_ZERO(&ui.arena, Text);
+
+    self->node.id = options.id;
+    self->text = options.text;
+    self->wrap = options.wrap;
+    self->size = options.size;
+
+    // self->node.add_child = text_add_child;
+    // self->node.get_children = text_get_children;
+    self->node.fit_width = text_fit_width;
+    // self->node.fit_height = text_fit_height;
+    // self->node.grow_width = text_grow_width;
+    // self->node.grow_height = text_grow_height;
+    // self->node.position = text_position;
+    self->node.draw = text_draw;
+    if (ui.current == NULL)
+    {
+        ui.current = &self->node;
+    }
+    else
+    {
+        node_add_child(ui.current, &self->node);
     }
 }
 

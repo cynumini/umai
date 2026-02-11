@@ -5,26 +5,6 @@
 #include <SKN/array.h>
 #include <raylib.h>
 
-typedef struct UI UI;
-typedef struct Sides Sides;
-typedef struct Size Size;
-typedef struct Node Node;
-typedef struct Contrainer Contrainer;
-typedef struct ContainerOptions ContainerOptions;
-typedef struct Text Text;
-
-struct UI
-{
-    Arena arena;
-    Node *current;
-};
-
-void ui_init(void);
-void ui_deinit(void);
-void ui_draw(void);
-void ui_resize(void);
-void ui_print_tree(void);
-
 typedef enum Alignment
 {
     ALIGNMENT_LEFT_TOP,
@@ -38,13 +18,13 @@ typedef enum Alignment
     ALIGNMENT_RIGHT_BOTTOM
 } Alignment;
 
-struct Sides
+typedef struct Sides
 {
     u32 top;
     u32 left;
     u32 bottom;
     u32 right;
-};
+} Sides;
 
 Sides sides_all(int value);
 
@@ -55,15 +35,17 @@ typedef enum SizeType
     SIZE_TYPE_FIXED
 } SizeType;
 
-struct Size
+typedef struct Size
 {
     SizeType type;
     u32 value;
-};
+} Size;
 
 Size size_fit(void);
 Size size_grow(void);
 Size size_fixed(u32 value);
+
+typedef struct Node Node;
 
 DEFINE_DYNAMIC_ARRAY(NodePtrArray, Node *);
 
@@ -85,7 +67,7 @@ struct Node
 
     void (*add_child)(Node *self, Node *child);
     NodePtrArray *(*get_children)(Node *self);
-    void (*fit_width)(Node *self);
+    u32 (*fit_width)(Node *self);
     void (*fit_height)(Node *self);
     void (*grow_width)(Node *self);
     void (*grow_height)(Node *self);
@@ -96,21 +78,33 @@ struct Node
     Rectangle rect;
 };
 
-typedef enum LayoutDirection
+typedef struct UI
 {
-    LAYOUT_DIRECTION_LEFT_TO_RIGHT,
-    LAYOUT_DIRECTION_TOP_TO_BOTTOM,
-} LayoutDirection;
+    Arena arena;
+    Node *current;
+} UI;
 
-struct Contrainer
+void ui_init(void);
+void ui_deinit(void);
+void ui_draw(void);
+void ui_resize(void);
+void ui_print_tree(void);
+
+typedef enum Direction
+{
+    DIRECTION_LEFT_TO_RIGHT,
+    DIRECTION_TOP_TO_BOTTOM,
+} Direction;
+
+typedef struct Contrainer
 {
     Node node;
-    LayoutDirection layout_direction;
+    Direction direction;
     i32 child_gap;
     NodePtrArray children;
-};
+} Contrainer;
 
-struct ContainerOptions
+typedef struct ContainerOptions
 {
     const char *id;
     Color background;
@@ -118,7 +112,8 @@ struct ContainerOptions
     Size height;
     Sides paddings;
     i32 child_gap;
-};
+    Direction direction;
+} ContainerOptions;
 
 void container_open(ContainerOptions options);
 void container_close(void);
@@ -126,12 +121,25 @@ void container_close(void);
 #define CONTRAINER(...)                                                                                                \
     for (usize i = (container_open((ContainerOptions)__VA_ARGS__), 0); i < 1; container_close(), i = 1)
 
-struct Text
+typedef struct Text
 {
     Node node;
     char *text;
-    i32 size;
-};
+    bool wrap;
+    u32 size;
+} Text;
+
+typedef struct TextOptions
+{
+    const char *id;
+    char *text;
+    bool wrap;
+    u32 size;
+} TextOptions;
+
+void text_open(TextOptions options);
+
+#define TEXT(...) text_open((TextOptions)__VA_ARGS__)
 
 // TODO: Nodes I will probably need:
 // - Button

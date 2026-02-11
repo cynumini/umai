@@ -1,3 +1,4 @@
+#include <math.h>
 #include <raylib.h>
 
 #include "ui.h"
@@ -7,10 +8,15 @@
 
 void test(const char *id)
 {
-    CONTRAINER({.id = id, .background = GREEN, .paddings = sides_all(8), .child_gap = 8, .height = size_grow()})
+    CONTRAINER({.id = id,
+                .background = GREEN,
+                .paddings = sides_all(8),
+                .child_gap = 8,
+                .height = size_grow(),
+                .direction = DIRECTION_TOP_TO_BOTTOM})
     {
         CONTRAINER({.background = BLUE, .width = size_fixed(200), .height = size_fixed(200)});
-        CONTRAINER({.background = GOLD, .width = size_fixed(100), .height = size_grow()});
+        CONTRAINER({.background = GOLD, .width = size_fixed(100), .height = size_fixed(100)});
     }
 }
 
@@ -30,10 +36,11 @@ int main(int argc, char *argv[])
 
     CONTRAINER({.background = RED, .paddings = sides_all(10), .child_gap = 8})
     {
+        TEXT({.id = "text", .text = "text", .size = 50});
         CONTRAINER({.width = size_fixed(256), .height = size_fixed(256), .background = GREEN});
         CONTRAINER({.width = size_fixed(128), .height = size_fixed(128), .background = BLUE});
         CONTRAINER({.width = size_fixed(128), .height = size_grow(), .background = YELLOW});
-        test("test");
+        test("here");
     }
 
     ui_print_tree();
