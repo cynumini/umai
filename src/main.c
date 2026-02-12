@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 
     CONTRAINER({.background = RED, .paddings = sides_all(10), .child_gap = 8})
     {
-        TEXT({.id = "text", .text = "text", .size = 50});
+        TEXT({.id = "text", .text = "A very long text, actually", .wrap = true, .size = 20});
         CONTRAINER({.width = size_fixed(256), .height = size_fixed(256), .background = GREEN});
         CONTRAINER({.width = size_fixed(128), .height = size_fixed(128), .background = BLUE});
         CONTRAINER({.width = size_fixed(128), .height = size_grow(), .background = YELLOW});

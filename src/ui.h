@@ -41,19 +41,20 @@ typedef struct Size
     u32 value;
 } Size;
 
-Size size_fit(void);
 Size size_grow(void);
 Size size_fixed(u32 value);
 
 typedef struct Node Node;
+typedef struct Contrainer Contrainer;
 
 DEFINE_DYNAMIC_ARRAY(NodePtrArray, Node *);
+DEFINE_DYNAMIC_ARRAY(StringArray, char *);
 
 struct Node
 {
     const char *class;
     const char *id;
-    Node *parent;
+    Contrainer *parent;
 
     Alignment alignment;
     Color background;
@@ -65,30 +66,17 @@ struct Node
     Size height;
     bool is_hidden;
 
-    void (*add_child)(Node *self, Node *child);
-    NodePtrArray *(*get_children)(Node *self);
     u32 (*fit_width)(Node *self);
-    void (*fit_height)(Node *self);
+    u32 (*fit_height)(Node *self);
     void (*grow_width)(Node *self);
     void (*grow_height)(Node *self);
     void (*position)(Node *self);
     void (*update)(Node *self);
     void (*draw)(Node *self);
+    void (*print)(Node *self, usize level);
 
     Rectangle rect;
 };
-
-typedef struct UI
-{
-    Arena arena;
-    Node *current;
-} UI;
-
-void ui_init(void);
-void ui_deinit(void);
-void ui_draw(void);
-void ui_resize(void);
-void ui_print_tree(void);
 
 typedef enum Direction
 {
@@ -96,13 +84,13 @@ typedef enum Direction
     DIRECTION_TOP_TO_BOTTOM,
 } Direction;
 
-typedef struct Contrainer
+struct Contrainer
 {
     Node node;
     Direction direction;
     i32 child_gap;
     NodePtrArray children;
-} Contrainer;
+};
 
 typedef struct ContainerOptions
 {
@@ -120,6 +108,18 @@ void container_close(void);
 
 #define CONTRAINER(...)                                                                                                \
     for (usize i = (container_open((ContainerOptions)__VA_ARGS__), 0); i < 1; container_close(), i = 1)
+
+typedef struct UI
+{
+    Arena arena;
+    Contrainer *current;
+} UI;
+
+void ui_init(void);
+void ui_deinit(void);
+void ui_draw(void);
+void ui_resize(void);
+void ui_print_tree(void);
 
 typedef struct Text
 {

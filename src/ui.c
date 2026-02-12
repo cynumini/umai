@@ -1,19 +1,17 @@
 #include "ui.h"
 #include "SKN/arena.h"
+#include "SKN/types.h"
 
+#include <assert.h>
 #include <math.h>
 #include <raylib.h>
 #include <stdio.h>
 
 #include <SKN/math.h>
 #include <raymath.h>
+#include <string.h>
 
 static UI ui = {0};
-
-Size size_fit(void)
-{
-    return (Size){SIZE_TYPE_FIT, 0};
-}
 
 Size size_grow(void)
 {
@@ -30,103 +28,12 @@ Sides sides_all(int value)
     return (Sides){value, value, value, value};
 }
 
-static void node_add_child(Node *self, Node *child)
-{
-    if (self->add_child != NULL)
-    {
-        self->add_child(self, child);
-    }
-}
-
-static NodePtrArray *node_get_children(Node *self)
-{
-
-    if (self->get_children != NULL)
-    {
-        return self->get_children(self);
-    }
-    return NULL;
-}
-
-static void node_fit_width(Node *self)
-{
-    if (self->fit_width != NULL)
-    {
-        self->rect.width = self->fit_width(self);
-    }
-}
-
-static void node_grow_width(Node *self)
-{
-    if (self->grow_width != NULL)
-    {
-        self->grow_width(self);
-    }
-}
-
-static void node_fit_height(Node *self)
-{
-    if (self->fit_height != NULL)
-    {
-        self->fit_height(self);
-    }
-}
-
-static void node_grow_height(Node *self)
-{
-    if (self->grow_height != NULL)
-    {
-        self->grow_height(self);
-    }
-}
-
-static void node_position(Node *self)
-{
-    if (self->position != NULL)
-    {
-        self->position(self);
-    }
-}
-
-static void node_print(Node *self, usize level)
-{
-    for (usize i = 0; i < level; i++)
-    {
-        printf("\t");
-    }
-    const char *id = self->id != NULL ? self->id : "NULL";
-    printf("id = %s\n", id);
-    NodePtrArray *children = node_get_children(self);
-    if (children)
-    {
-        for (usize i = 0; i < children->len; i++)
-        {
-            node_print(children->items[i], level + 1);
-        }
-    }
-}
-
-static void node_draw(Node *self)
-{
-    if (self->draw != NULL)
-    {
-        self->draw(self);
-    }
-}
-
 DYNAMIC_ARRAY_IMPL_STATIC(NodePtrArray, Node *, node_ptr_array)
 
-static void container_add_child(Node *node, Node *child)
+static void container_add_child(Contrainer *self, Node *child)
 {
-    Contrainer *self = (Contrainer *)node;
-    child->parent = node;
+    child->parent = self;
     node_ptr_array_add(&ui.arena, &self->children, child);
-}
-
-static NodePtrArray *container_get_children(Node *node)
-{
-    Contrainer *self = (Contrainer *)node;
-    return &self->children;
 }
 
 static u32 container_fit_width(Node *node)
@@ -135,7 +42,9 @@ static u32 container_fit_width(Node *node)
 
     for (usize i = 0; i < self->children.len; i++)
     {
-        node_fit_width(self->children.items[i]);
+        Node *child = self->children.items[i];
+        assert(child->fit_width);
+        child->rect.width = child->fit_width(child);
     }
 
     if (node->width.type == SIZE_TYPE_FIXED)
@@ -156,40 +65,34 @@ static u32 container_fit_width(Node *node)
         }
         return total_width;
     }
-    // DIRECTION_TOP_TO_BOTTOM
-    f32 max_width = 0;
-    for (usize i = 0; i < self->children.len; i++)
+    else // DIRECTION_TOP_TO_BOTTOM
     {
-        max_width = MAX(self->children.items[i]->rect.width, max_width);
+        f32 max_width = 0;
+        for (usize i = 0; i < self->children.len; i++)
+        {
+            max_width = MAX(self->children.items[i]->rect.width, max_width);
+        }
+        return max_width + node->paddings.left + node->paddings.right;
     }
-    return max_width + node->paddings.left + node->paddings.right;
 }
 
-static void container_fit_height(Node *node)
+static u32 container_fit_height(Node *node)
 {
     Contrainer *self = (Contrainer *)node;
 
     for (usize i = 0; i < self->children.len; i++)
     {
-        node_fit_height(self->children.items[i]);
+        Node *child = self->children.items[i];
+        assert(child->fit_height);
+        child->rect.height = child->fit_height(child);
     }
 
     if (node->height.type == SIZE_TYPE_FIXED)
     {
-        node->rect.height = node->height.value;
-        return;
+        return node->height.value;
     }
 
-    if (self->direction == DIRECTION_LEFT_TO_RIGHT)
-    {
-        f32 max_height = 0;
-        for (usize i = 0; i < self->children.len; i++)
-        {
-            max_height = MAX(self->children.items[i]->rect.height, max_height);
-        }
-        node->rect.height = max_height + node->paddings.top + node->paddings.bottom;
-    }
-    else
+    if (self->direction == DIRECTION_TOP_TO_BOTTOM)
     {
         f32 total_height = node->paddings.top + node->paddings.bottom;
         if (self->children.len > 0)
@@ -200,7 +103,16 @@ static void container_fit_height(Node *node)
         {
             total_height += self->children.items[i]->rect.height;
         }
-        node->rect.height = total_height;
+        return total_height;
+    }
+    else // DIRECTION_LEFT_TO_RIGHT
+    {
+        f32 max_height = 0;
+        for (usize i = 0; i < self->children.len; i++)
+        {
+            max_height = MAX(self->children.items[i]->rect.height, max_height);
+        }
+        return max_height + node->paddings.top + node->paddings.bottom;
     }
 }
 
@@ -279,7 +191,11 @@ static void container_grow_width(Node *node)
 
     for (usize i = 0; i < self->children.len; i++)
     {
-        node_grow_width(self->children.items[i]);
+        Node *child = self->children.items[i];
+        if (child->grow_width != NULL)
+        {
+            child->grow_width(child);
+        }
     }
 }
 
@@ -356,7 +272,11 @@ static void container_grow_height(Node *node)
 
     for (usize i = 0; i < self->children.len; i++)
     {
-        node_grow_height(self->children.items[i]);
+        Node *child = self->children.items[i];
+        if (child->grow_height != NULL)
+        {
+            child->grow_height(child);
+        }
     }
 }
 
@@ -428,7 +348,11 @@ static void container_position(Node *node)
 
     for (usize i = 0; i < self->children.len; i++)
     {
-        node_position(self->children.items[i]);
+        Node *child = self->children.items[i];
+        if (child->position != NULL)
+        {
+            child->position(child);
+        }
     }
 }
 
@@ -438,7 +362,36 @@ static void container_draw(Node *node)
     DrawRectangleRec(node->rect, node->background);
     for (usize i = 0; i < self->children.len; i++)
     {
-        node_draw(self->children.items[i]);
+        Node *child = self->children.items[i];
+        assert(child->draw);
+        child->draw(child);
+    }
+}
+
+static void node_print_base(Node *node, usize level, const char *type)
+{
+    for (usize i = 0; i < level; i++)
+    {
+        printf("\t");
+    }
+    printf("%s(id = %s)\n", type, node->id);
+}
+
+static void container_print(Node *node, usize level)
+{
+    Contrainer *self = (Contrainer *)node;
+    node_print_base(node, level, "Contrainer");
+    for (usize i = 0; i < self->children.len; i++)
+    {
+        Node *child = self->children.items[i];
+        if (child->print != NULL)
+        {
+            child->print(child, level + 1);
+        }
+        else
+        {
+            node_print_base(child, level + 1, "Unknown");
+        }
     }
 }
 
@@ -452,30 +405,27 @@ void container_open(ContainerOptions options)
     self->node.width = options.width;
     self->node.height = options.height;
     self->node.paddings = options.paddings;
-    self->node.add_child = container_add_child;
-    self->node.get_children = container_get_children;
     self->node.fit_width = container_fit_width;
     self->node.fit_height = container_fit_height;
     self->node.grow_width = container_grow_width;
     self->node.grow_height = container_grow_height;
     self->node.position = container_position;
     self->node.draw = container_draw;
-    if (ui.current == NULL)
+    self->node.print = container_print;
+
+    if (ui.current != NULL)
     {
-        ui.current = &self->node;
+        container_add_child(ui.current, &self->node);
     }
-    else
-    {
-        node_add_child(ui.current, &self->node);
-    }
-    ui.current = &self->node;
+
+    ui.current = self;
 }
 
 void container_close(void)
 {
-    if (ui.current->parent != NULL)
+    if (ui.current->node.parent != NULL)
     {
-        ui.current = ui.current->parent;
+        ui.current = ui.current->node.parent;
     }
     else
     {
@@ -486,12 +436,120 @@ void container_close(void)
 static u32 text_fit_width(Node *node)
 {
     Text *self = (Text *)node;
-    return MeasureText(self->text, self->size);
+    if (self->wrap)
+    {
+        f32 min_width = 0;
+
+        ArenaSave save = arena_quick_save(&ui.arena);
+        char *text = arena_strdup(&ui.arena, self->text);
+        const char *token = strtok(text, " ");
+        while (token != NULL)
+        {
+            u32 width = MeasureText(token, 20);
+            min_width = MAX(width, min_width);
+            token = strtok(NULL, " ");
+        }
+        node->rect.width = min_width;
+        arena_quick_load(&ui.arena, save);
+
+        return min_width;
+    }
+    else
+    {
+        return MeasureText(self->text, self->size);
+    }
 }
 
-static void text_draw(Node *node) {
+static u32 text_fit_height(Node *node)
+{
     Text *self = (Text *)node;
-    DrawText(self->text, node->rect.x, node->rect.y, self->size, BLACK);
+    return self->size;
+}
+
+DYNAMIC_ARRAY_IMPL_STATIC(StringArray, char *, string_array)
+
+static char *concat(char **words, usize words_len)
+{
+    assert(words_len > 0);
+    usize total_len = (words_len - 1);
+    for (usize i = 0; i < words_len; i++)
+    {
+        total_len += strlen(words[i]);
+    }
+    total_len += 1; // for \0
+    char *line = arena_push_zero(&ui.arena, sizeof(char) * total_len);
+    usize offset = 0;
+    for (usize i = 0; i < words_len; i++)
+    {
+        const char *word = words[i];
+        strcpy(line + offset, word);
+        offset += strlen(word);
+        if (i + 1 != words_len)
+        {
+            line[offset] = ' ';
+        }
+        offset += 1;
+    }
+    return line;
+}
+
+// Make sure to "quick save" before and "quick load" after the call
+static StringArray wrap_text(const char *orignal_text, u32 width, u32 height)
+{
+    StringArray lines = {0};
+    StringArray words = {0};
+    char *text = arena_strdup(&ui.arena, orignal_text);
+    char *token = strtok(text, " ");
+    while (token != NULL)
+    {
+        string_array_add(&ui.arena, &words, token);
+        token = strtok(NULL, " ");
+    }
+    usize offset = 0;
+    while (offset < words.len)
+    {
+        char *line = words.items[offset];
+        usize len = 1;
+        for (usize i = 2; i < (words.len - offset + 1); i++)
+        {
+            char *new_line = concat(words.items + offset, i);
+            if ((u32)MeasureText(new_line, height) < width)
+            {
+                len = i;
+                line = new_line;
+            }
+        }
+        string_array_add(&ui.arena, &lines, line);
+        offset += len;
+    }
+    return lines;
+}
+
+static void text_draw(Node *node)
+{
+    Text *self = (Text *)node;
+    if (self->wrap)
+    {
+        ArenaSave save = arena_quick_save(&ui.arena);
+        StringArray lines = wrap_text(self->text, node->rect.width, node->rect.height);
+        u32 left_offest = node->rect.y;
+        u32 top_offest = node->rect.y;
+        for (usize i = 0; i < lines.len; i++)
+        {
+            DrawText(lines.items[i], left_offest, top_offest, self->size, BLACK);
+            top_offest += self->size;
+        }
+        arena_quick_load(&ui.arena, save);
+    }
+    else
+    {
+        DrawText(self->text, node->rect.x, node->rect.y, self->size, BLACK);
+    }
+}
+
+static void text_print(Node *node, usize level)
+{
+    node_print_base(node, level, "Text");
 }
 
 void text_open(TextOptions options)
@@ -501,24 +559,18 @@ void text_open(TextOptions options)
     self->node.id = options.id;
     self->text = options.text;
     self->wrap = options.wrap;
+    if (options.wrap)
+    {
+        self->node.width = size_grow();
+    }
     self->size = options.size;
 
-    // self->node.add_child = text_add_child;
-    // self->node.get_children = text_get_children;
     self->node.fit_width = text_fit_width;
-    // self->node.fit_height = text_fit_height;
-    // self->node.grow_width = text_grow_width;
-    // self->node.grow_height = text_grow_height;
-    // self->node.position = text_position;
+    self->node.fit_height = text_fit_height;
     self->node.draw = text_draw;
-    if (ui.current == NULL)
-    {
-        ui.current = &self->node;
-    }
-    else
-    {
-        node_add_child(ui.current, &self->node);
-    }
+    self->node.print = text_print;
+    assert(ui.current != NULL);
+    container_add_child(ui.current, &self->node);
 }
 
 void ui_init(void)
@@ -533,22 +585,38 @@ void ui_deinit(void)
 
 void ui_draw(void)
 {
-    ui.current->draw(ui.current);
+    ui.current->node.draw(&ui.current->node);
 }
 
 void ui_resize(void)
 {
-    node_fit_width(ui.current);
-    node_grow_width(ui.current);
-    node_fit_height(ui.current);
-    node_grow_height(ui.current);
-    node_position(ui.current);
+    Node *current = &ui.current->node;
+
+    // TODO: calc max width as well
+    assert(current->fit_width);
+    current->rect.width = current->fit_width(current);
+
+    if (current->grow_width != NULL)
+    {
+        current->grow_width(current);
+    }
+
+    assert(current->fit_height);
+    current->rect.height = current->fit_height(current);
+
+    if (current->grow_height != NULL)
+    {
+        current->grow_height(current);
+    }
+
+    if (current->position != NULL)
+    {
+        current->position(current);
+    }
 }
 
 void ui_print_tree(void)
 {
-    if (ui.current)
-    {
-        node_print(ui.current, 0);
-    }
+    assert(ui.current != NULL);
+    container_print(&ui.current->node, 0);
 }
