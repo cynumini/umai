@@ -6,6 +6,12 @@
 #include <SKN/arena.h>
 #include <stdlib.h>
 
+const char *long_text =
+    "Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem "
+    "placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar "
+    "vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut "
+    "hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.";
+
 void test(const char *id)
 {
     CONTRAINER({.id = id,
@@ -27,17 +33,27 @@ int main(int argc, char *argv[])
 
     SetWindowState(FLAG_WINDOW_RESIZABLE);
 
-    InitWindow(1280, 720, "umai");
+    const u32 width = 1380;
+    const u32 height = 720;
+
+    InitWindow(width, height, "umai");
 
     // SetExitKey(0);
     SetTargetFPS(60);
 
     ui_init();
 
-    CONTRAINER({.background = RED, .paddings = sides_all(10), .child_gap = 8})
+    CONTRAINER({.id = "root",
+                .background = RED,
+                .paddings = sides_all(10),
+                .child_gap = 8,
+                .width = size_fixed(width),
+                .height = size_fixed(height)})
     {
-        TEXT({.id = "text", .text = "A very long text, actually", .wrap = true, .size = 20});
+        TEXT({.id = "1", .text = long_text, .wrap = true, .size = 20});
+        TEXT({.id = "2", .text = "A very long text, actually", .wrap = true, .size = 20});
         CONTRAINER({.width = size_fixed(256), .height = size_fixed(256), .background = GREEN});
+        TEXT({.id = "3", .text = "A", .wrap = false, .size = 20});
         CONTRAINER({.width = size_fixed(128), .height = size_fixed(128), .background = BLUE});
         CONTRAINER({.width = size_fixed(128), .height = size_grow(), .background = YELLOW});
         test("here");
@@ -48,6 +64,10 @@ int main(int argc, char *argv[])
     while (!WindowShouldClose())
     {
         // Update
+        if (IsWindowResized())
+        {
+            ui_resize(GetScreenWidth(), GetScreenHeight());
+        }
 
         // Draw
         BeginDrawing();

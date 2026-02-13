@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "SKN/arena.h"
+#include "SKN/array.h"
 #include "SKN/types.h"
 
 #include <assert.h>
@@ -12,6 +13,11 @@
 #include <string.h>
 
 static UI ui = {0};
+
+Size size_fit(void)
+{
+    return (Size){SIZE_TYPE_FIT, 0};
+}
 
 Size size_grow(void)
 {
@@ -28,7 +34,8 @@ Sides sides_all(int value)
     return (Sides){value, value, value, value};
 }
 
-DYNAMIC_ARRAY_IMPL_STATIC(NodePtrArray, Node *, node_ptr_array)
+DYNAMIC_ARRAY_IMPL_ADD(NodePtrArray, Node *, node_ptr_array_add)
+DYNAMIC_ARRAY_IMPL_SWAP_REMOVE(NodePtrArray, node_ptr_array_swap_remove)
 
 static void container_add_child(Contrainer *self, Node *child)
 {
@@ -122,7 +129,7 @@ static void container_grow_width(Node *node)
 
     f32 remaining_width = node->rect.width;
     remaining_width -= node->paddings.left + node->paddings.right;
-    ArenaSave arena_save = arena_quick_save(&ui.arena);
+    ArenaSave save = arena_quick_save(&ui.arena);
     NodePtrArray growable = {0};
 
     if (self->direction == DIRECTION_LEFT_TO_RIGHT)
@@ -187,7 +194,85 @@ static void container_grow_width(Node *node)
         }
     }
 
-    arena_quick_load(&ui.arena, arena_save);
+    NodePtrArray text_nodes = {0};
+
+    if (self->direction == DIRECTION_LEFT_TO_RIGHT)
+    {
+        for (usize i = 0; i < self->children.len; i++)
+        {
+            Node *child = self->children.items[i];
+            if (child->is_text)
+            {
+                Text *child_text = (Text *)child;
+                if (child_text->wrap == true)
+                {
+                    node_ptr_array_add(&ui.arena, &text_nodes, child);
+                }
+            }
+        }
+
+        while (remaining_width > 0 && text_nodes.len > 0)
+        {
+            f32 smallest = text_nodes.items[0]->rect.width;
+            f32 second_smallest = INFINITY;
+            f32 width_to_add = remaining_width;
+
+            for (usize i = 0; i < text_nodes.len; i++)
+            {
+                Node *child = text_nodes.items[i];
+                if (child->rect.width < smallest)
+                {
+                    second_smallest = smallest;
+                    smallest = child->rect.width;
+                }
+                if (child->rect.width > smallest)
+                {
+                    second_smallest = MIN(second_smallest, child->rect.width);
+                    width_to_add = second_smallest - smallest;
+                }
+            }
+
+            width_to_add = MIN(width_to_add, remaining_width / text_nodes.len);
+            if (width_to_add == 0)
+                break;
+
+            for (usize i = 0; i < text_nodes.len; i++)
+            {
+                Node *child = text_nodes.items[i];
+                if (child->rect.width == smallest)
+                {
+                    Text *text_child = (Text *)child;
+                    u32 max_text_width = MeasureText(text_child->text, text_child->size);
+                    if (child->rect.width + width_to_add > max_text_width)
+                    {
+                        width_to_add = max_text_width - child->rect.width;
+                        child->rect.width += width_to_add;
+                        remaining_width -= width_to_add;
+                        node_ptr_array_swap_remove(&text_nodes, i);
+                        break;
+                    }
+                    else
+                    {
+                        child->rect.width += width_to_add;
+                        remaining_width -= width_to_add;
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        for (usize i = 0; i < self->children.len; i++)
+        {
+            Node *child = self->children.items[i];
+            if (child->is_text)
+            {
+                child->rect.width = remaining_width;
+            }
+        }
+    }
+
+    arena_quick_load(&ui.arena, save);
 
     for (usize i = 0; i < self->children.len; i++)
     {
@@ -429,7 +514,7 @@ void container_close(void)
     }
     else
     {
-        ui_resize();
+        ui_resize(0, 0);
     }
 }
 
@@ -466,7 +551,7 @@ static u32 text_fit_height(Node *node)
     return self->size;
 }
 
-DYNAMIC_ARRAY_IMPL_STATIC(StringArray, char *, string_array)
+DYNAMIC_ARRAY_IMPL_ADD(StringArray, char *, string_array_add)
 
 static char *concat(char **words, usize words_len)
 {
@@ -494,11 +579,11 @@ static char *concat(char **words, usize words_len)
 }
 
 // Make sure to "quick save" before and "quick load" after the call
-static StringArray wrap_text(const char *orignal_text, u32 width, u32 height)
+static StringArray wrap_text(const char *original_text, u32 width, u32 height)
 {
     StringArray lines = {0};
     StringArray words = {0};
-    char *text = arena_strdup(&ui.arena, orignal_text);
+    char *text = arena_strdup(&ui.arena, original_text);
     char *token = strtok(text, " ");
     while (token != NULL)
     {
@@ -513,7 +598,7 @@ static StringArray wrap_text(const char *orignal_text, u32 width, u32 height)
         for (usize i = 2; i < (words.len - offset + 1); i++)
         {
             char *new_line = concat(words.items + offset, i);
-            if ((u32)MeasureText(new_line, height) < width)
+            if ((u32)MeasureText(new_line, height) <= width)
             {
                 len = i;
                 line = new_line;
@@ -532,7 +617,7 @@ static void text_draw(Node *node)
     {
         ArenaSave save = arena_quick_save(&ui.arena);
         StringArray lines = wrap_text(self->text, node->rect.width, node->rect.height);
-        u32 left_offest = node->rect.y;
+        u32 left_offest = node->rect.x;
         u32 top_offest = node->rect.y;
         for (usize i = 0; i < lines.len; i++)
         {
@@ -559,12 +644,8 @@ void text_open(TextOptions options)
     self->node.id = options.id;
     self->text = options.text;
     self->wrap = options.wrap;
-    if (options.wrap)
-    {
-        self->node.width = size_grow();
-    }
+    self->node.is_text = true;
     self->size = options.size;
-
     self->node.fit_width = text_fit_width;
     self->node.fit_height = text_fit_height;
     self->node.draw = text_draw;
@@ -588,11 +669,19 @@ void ui_draw(void)
     ui.current->node.draw(&ui.current->node);
 }
 
-void ui_resize(void)
+void ui_resize(u32 width, u32 height)
 {
     Node *current = &ui.current->node;
 
-    // TODO: calc max width as well
+    if (width != 0)
+    {
+        current->width = size_fixed(width);
+    }
+    if (height != 0)
+    {
+        current->height = size_fixed(height);
+    }
+
     assert(current->fit_width);
     current->rect.width = current->fit_width(current);
 

@@ -41,6 +41,7 @@ typedef struct Size
     u32 value;
 } Size;
 
+Size size_fit(void);
 Size size_grow(void);
 Size size_fixed(u32 value);
 
@@ -65,10 +66,11 @@ struct Node
     Size width;
     Size height;
     bool is_hidden;
+    bool is_text;
 
     u32 (*fit_width)(Node *self);
-    u32 (*fit_height)(Node *self);
     void (*grow_width)(Node *self);
+    u32 (*fit_height)(Node *self);
     void (*grow_height)(Node *self);
     void (*position)(Node *self);
     void (*update)(Node *self);
@@ -118,13 +120,13 @@ typedef struct UI
 void ui_init(void);
 void ui_deinit(void);
 void ui_draw(void);
-void ui_resize(void);
+void ui_resize(u32 width, u32 height);
 void ui_print_tree(void);
 
 typedef struct Text
 {
     Node node;
-    char *text;
+    const char *text;
     bool wrap;
     u32 size;
 } Text;
@@ -132,7 +134,7 @@ typedef struct Text
 typedef struct TextOptions
 {
     const char *id;
-    char *text;
+    const char *text;
     bool wrap;
     u32 size;
 } TextOptions;
