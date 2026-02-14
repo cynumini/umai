@@ -4,6 +4,7 @@
 #include "ui.h"
 
 #include <SKN/arena.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 const char *long_text =
@@ -22,6 +23,7 @@ void test(const char *id)
                 .direction = DIRECTION_TOP_TO_BOTTOM})
     {
         CONTRAINER({.background = BLUE, .width = size_fixed(200), .height = size_fixed(200)});
+        TEXT({.id = "1", .text = "aaaa\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\na", .wrap = true, .size = 20});
         CONTRAINER({.background = GOLD, .width = size_fixed(100), .height = size_fixed(100)});
     }
 }
@@ -33,7 +35,7 @@ int main(int argc, char *argv[])
 
     SetWindowState(FLAG_WINDOW_RESIZABLE);
 
-    const u32 width = 1380;
+    const u32 width = 1175;
     const u32 height = 720;
 
     InitWindow(width, height, "umai");
@@ -43,20 +45,17 @@ int main(int argc, char *argv[])
 
     ui_init();
 
-    CONTRAINER({.id = "root",
-                .background = RED,
-                .paddings = sides_all(10),
-                .child_gap = 8,
-                .width = size_fixed(width),
-                .height = size_fixed(height)})
+    CONTRAINER({
+        .id = "root",
+        .width = size_fixed(width),
+        .height = size_fixed(height),
+        .direction = DIRECTION_TOP_TO_BOTTOM,
+    })
     {
-        TEXT({.id = "1", .text = long_text, .wrap = true, .size = 20});
-        TEXT({.id = "2", .text = "A very long text, actually", .wrap = true, .size = 20});
-        CONTRAINER({.width = size_fixed(256), .height = size_fixed(256), .background = GREEN});
-        TEXT({.id = "3", .text = "A", .wrap = false, .size = 20});
-        CONTRAINER({.width = size_fixed(128), .height = size_fixed(128), .background = BLUE});
-        CONTRAINER({.width = size_fixed(128), .height = size_grow(), .background = YELLOW});
-        test("here");
+        CONTRAINER({.background = GRAY, .width = size_grow(), .alignment = ALIGNMENT_CENTER})
+        {
+            TEXT({.id = "header", .text = "Main", .size = 20});
+        }
     }
 
     ui_print_tree();
@@ -64,9 +63,18 @@ int main(int argc, char *argv[])
     while (!WindowShouldClose())
     {
         // Update
+        // ui_update();
         if (IsWindowResized())
         {
             ui_resize(GetScreenWidth(), GetScreenHeight());
+        }
+
+        if (IsKeyReleased(KEY_SPACE))
+        {
+            // Text *text = ui_get_by_id("header");
+            // text->text = "taste your fate";
+            // ui_commit();
+            printf("here\n");
         }
 
         // Draw

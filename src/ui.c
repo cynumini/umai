@@ -35,7 +35,6 @@ Sides sides_all(int value)
 }
 
 DYNAMIC_ARRAY_IMPL_ADD(NodePtrArray, Node *, node_ptr_array_add)
-DYNAMIC_ARRAY_IMPL_SWAP_REMOVE(NodePtrArray, node_ptr_array_swap_remove)
 
 static void container_add_child(Contrainer *self, Node *child)
 {
@@ -123,6 +122,9 @@ static u32 container_fit_height(Node *node)
     }
 }
 
+DYNAMIC_ARRAY_IMPL_ADD(TextPtrArray, Text *, text_ptr_array_add)
+DYNAMIC_ARRAY_IMPL_SWAP_REMOVE(TextPtrArray, text_ptr_array_swap_remove)
+
 static void container_grow_width(Node *node)
 {
     Contrainer *self = (Contrainer *)node;
@@ -189,45 +191,45 @@ static void container_grow_width(Node *node)
             Node *child = self->children.items[i];
             if (child->width.type == SIZE_TYPE_GROW)
             {
-                child->rect.width = remaining_width;
+                child->rect.width = MAX(remaining_width, child->rect.width);
             }
         }
     }
 
-    NodePtrArray text_nodes = {0};
+    TextPtrArray text_nodes = {0};
 
     if (self->direction == DIRECTION_LEFT_TO_RIGHT)
     {
         for (usize i = 0; i < self->children.len; i++)
         {
             Node *child = self->children.items[i];
-            if (child->is_text)
+            if (child->type == NODE_TYPE_TEXT)
             {
                 Text *child_text = (Text *)child;
                 if (child_text->wrap == true)
                 {
-                    node_ptr_array_add(&ui.arena, &text_nodes, child);
+                    text_ptr_array_add(&ui.arena, &text_nodes, child_text);
                 }
             }
         }
 
         while (remaining_width > 0 && text_nodes.len > 0)
         {
-            f32 smallest = text_nodes.items[0]->rect.width;
+            f32 smallest = text_nodes.items[0]->node.rect.width;
             f32 second_smallest = INFINITY;
             f32 width_to_add = remaining_width;
 
             for (usize i = 0; i < text_nodes.len; i++)
             {
-                Node *child = text_nodes.items[i];
-                if (child->rect.width < smallest)
+                Text *child = text_nodes.items[i];
+                if (child->node.rect.width < smallest)
                 {
                     second_smallest = smallest;
-                    smallest = child->rect.width;
+                    smallest = child->node.rect.width;
                 }
-                if (child->rect.width > smallest)
+                if (child->node.rect.width > smallest)
                 {
-                    second_smallest = MIN(second_smallest, child->rect.width);
+                    second_smallest = MIN(second_smallest, child->node.rect.width);
                     width_to_add = second_smallest - smallest;
                 }
             }
@@ -238,22 +240,21 @@ static void container_grow_width(Node *node)
 
             for (usize i = 0; i < text_nodes.len; i++)
             {
-                Node *child = text_nodes.items[i];
-                if (child->rect.width == smallest)
+                Text *child = text_nodes.items[i];
+                if (child->node.rect.width == smallest)
                 {
-                    Text *text_child = (Text *)child;
-                    u32 max_text_width = MeasureText(text_child->text, text_child->size);
-                    if (child->rect.width + width_to_add > max_text_width)
+                    u32 max_text_width = MeasureText(child->text, child->size);
+                    if (child->node.rect.width + width_to_add > max_text_width)
                     {
-                        width_to_add = max_text_width - child->rect.width;
-                        child->rect.width += width_to_add;
+                        width_to_add = max_text_width - child->node.rect.width;
+                        child->node.rect.width += width_to_add;
                         remaining_width -= width_to_add;
-                        node_ptr_array_swap_remove(&text_nodes, i);
+                        text_ptr_array_swap_remove(&text_nodes, i);
                         break;
                     }
                     else
                     {
-                        child->rect.width += width_to_add;
+                        child->node.rect.width += width_to_add;
                         remaining_width -= width_to_add;
                     }
                 }
@@ -265,7 +266,7 @@ static void container_grow_width(Node *node)
         for (usize i = 0; i < self->children.len; i++)
         {
             Node *child = self->children.items[i];
-            if (child->is_text)
+            if (child->type == NODE_TYPE_TEXT)
             {
                 child->rect.width = remaining_width;
             }
@@ -299,7 +300,7 @@ static void container_grow_height(Node *node)
             Node *child = self->children.items[i];
             if (child->height.type == SIZE_TYPE_GROW)
             {
-                child->rect.height = remaining_height;
+                child->rect.height = MAX(remaining_height, child->rect.height);
             }
         }
     }
@@ -319,6 +320,7 @@ static void container_grow_height(Node *node)
                 node_ptr_array_add(&ui.arena, &growable, child);
             }
         }
+
         while (remaining_height > 0 && growable.len > 0)
         {
             f32 smallest = growable.items[0]->rect.height;
@@ -485,7 +487,9 @@ void container_open(ContainerOptions options)
     Contrainer *self = ARENA_PUSH_STRUCT_ZERO(&ui.arena, Contrainer);
     self->child_gap = options.child_gap;
     self->direction = options.direction;
+    self->node.alignment = options.alignment;
     self->node.id = options.id;
+    self->node.type = NODE_TYPE_CONTRAINER;
     self->node.background = options.background;
     self->node.width = options.width;
     self->node.height = options.height;
@@ -545,91 +549,72 @@ static u32 text_fit_width(Node *node)
     }
 }
 
-static u32 text_fit_height(Node *node)
+static u32 measure_text(const char *text, usize len, int font_size)
 {
-    Text *self = (Text *)node;
-    return self->size;
-}
-
-DYNAMIC_ARRAY_IMPL_ADD(StringArray, char *, string_array_add)
-
-static char *concat(char **words, usize words_len)
-{
-    assert(words_len > 0);
-    usize total_len = (words_len - 1);
-    for (usize i = 0; i < words_len; i++)
-    {
-        total_len += strlen(words[i]);
-    }
-    total_len += 1; // for \0
-    char *line = arena_push_zero(&ui.arena, sizeof(char) * total_len);
-    usize offset = 0;
-    for (usize i = 0; i < words_len; i++)
-    {
-        const char *word = words[i];
-        strcpy(line + offset, word);
-        offset += strlen(word);
-        if (i + 1 != words_len)
-        {
-            line[offset] = ' ';
-        }
-        offset += 1;
-    }
-    return line;
+    assert(len > 0);
+    ArenaSave save = arena_quick_save(&ui.arena);
+    const char *temp_text = arena_strndup(&ui.arena, text, len);
+    usize result = MeasureText(temp_text, font_size);
+    arena_quick_load(&ui.arena, save);
+    return result;
 }
 
 // Make sure to "quick save" before and "quick load" after the call
-static StringArray wrap_text(const char *original_text, u32 width, u32 height)
+static const char *wrap_text(const char *text, u32 width, u32 height)
 {
-    StringArray lines = {0};
-    StringArray words = {0};
-    char *text = arena_strdup(&ui.arena, original_text);
-    char *token = strtok(text, " ");
-    while (token != NULL)
+    char *new_text = arena_strdup(&ui.arena, text);
+    usize end = 0;
+    for (usize i = 0, start = 0; i < strlen(new_text);)
     {
-        string_array_add(&ui.arena, &words, token);
-        token = strtok(NULL, " ");
-    }
-    usize offset = 0;
-    while (offset < words.len)
-    {
-        char *line = words.items[offset];
-        usize len = 1;
-        for (usize i = 2; i < (words.len - offset + 1); i++)
+        if (new_text[i] == ' ')
         {
-            char *new_line = concat(words.items + offset, i);
-            if ((u32)MeasureText(new_line, height) <= width)
+            if (measure_text(new_text + start, i - start, height) <= width)
             {
-                len = i;
-                line = new_line;
+                end = i;
+            }
+            else
+            {
+                new_text[end] = '\n';
+                end += 1;
+                start = end;
+                i = end;
+                continue;
             }
         }
-        string_array_add(&ui.arena, &lines, line);
-        offset += len;
+        i++;
     }
-    return lines;
+    if ((u32)MeasureText(new_text, height) > width)
+    {
+        new_text[end] = '\n';
+    }
+    return new_text;
+}
+
+static u32 text_fit_height(Node *node)
+{
+    Text *self = (Text *)node;
+    ArenaSave save = arena_quick_save(&ui.arena);
+    const char *text = self->text;
+    if (self->wrap)
+    {
+        text = wrap_text(text, node->rect.width, self->size);
+    }
+    u32 height = MeasureTextEx(GetFontDefault(), text, self->size, 0).y;
+    arena_quick_load(&ui.arena, save);
+    return height;
 }
 
 static void text_draw(Node *node)
 {
     Text *self = (Text *)node;
+    ArenaSave save = arena_quick_save(&ui.arena);
+    const char *text = self->text;
     if (self->wrap)
     {
-        ArenaSave save = arena_quick_save(&ui.arena);
-        StringArray lines = wrap_text(self->text, node->rect.width, node->rect.height);
-        u32 left_offest = node->rect.x;
-        u32 top_offest = node->rect.y;
-        for (usize i = 0; i < lines.len; i++)
-        {
-            DrawText(lines.items[i], left_offest, top_offest, self->size, BLACK);
-            top_offest += self->size;
-        }
-        arena_quick_load(&ui.arena, save);
+        text = wrap_text(text, node->rect.width, self->size);
     }
-    else
-    {
-        DrawText(self->text, node->rect.x, node->rect.y, self->size, BLACK);
-    }
+    arena_quick_load(&ui.arena, save);
+    DrawText(text, node->rect.x, node->rect.y, self->size, BLACK);
 }
 
 static void text_print(Node *node, usize level)
@@ -644,7 +629,7 @@ void text_open(TextOptions options)
     self->node.id = options.id;
     self->text = options.text;
     self->wrap = options.wrap;
-    self->node.is_text = true;
+    self->node.type = NODE_TYPE_TEXT;
     self->size = options.size;
     self->node.fit_width = text_fit_width;
     self->node.fit_height = text_fit_height;
@@ -656,7 +641,8 @@ void text_open(TextOptions options)
 
 void ui_init(void)
 {
-    ui.arena = arena_create(MB(1));
+    ui.arena = arena_create(KB(3));
+    // ui.arena = arena_create(KB(84));
 }
 
 void ui_deinit(void)
@@ -709,3 +695,10 @@ void ui_print_tree(void)
     assert(ui.current != NULL);
     container_print(&ui.current->node, 0);
 }
+
+// Node *ui_get_by_id(const char *id)
+// {
+// }
+
+void ui_update(void);
+void ui_commit(void);

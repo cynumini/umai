@@ -51,11 +51,19 @@ typedef struct Contrainer Contrainer;
 DEFINE_DYNAMIC_ARRAY(NodePtrArray, Node *);
 DEFINE_DYNAMIC_ARRAY(StringArray, char *);
 
+typedef enum NodeType
+{
+    NODE_TYPE_NODE,
+    NODE_TYPE_CONTRAINER,
+    NODE_TYPE_TEXT,
+} NodeType;
+
 struct Node
 {
     const char *class;
     const char *id;
     Contrainer *parent;
+    NodeType type;
 
     Alignment alignment;
     Color background;
@@ -66,7 +74,6 @@ struct Node
     Size width;
     Size height;
     bool is_hidden;
-    bool is_text;
 
     u32 (*fit_width)(Node *self);
     void (*grow_width)(Node *self);
@@ -103,6 +110,7 @@ typedef struct ContainerOptions
     Sides paddings;
     i32 child_gap;
     Direction direction;
+    Alignment alignment;
 } ContainerOptions;
 
 void container_open(ContainerOptions options);
@@ -121,6 +129,9 @@ void ui_init(void);
 void ui_deinit(void);
 void ui_draw(void);
 void ui_resize(u32 width, u32 height);
+Node *ui_get_by_id(const char *id);
+void ui_update(void);
+void ui_commit(void);
 void ui_print_tree(void);
 
 typedef struct Text
@@ -130,6 +141,8 @@ typedef struct Text
     bool wrap;
     u32 size;
 } Text;
+
+DEFINE_DYNAMIC_ARRAY(TextPtrArray, Text *);
 
 typedef struct TextOptions
 {
