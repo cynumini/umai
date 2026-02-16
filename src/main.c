@@ -13,21 +13,6 @@ const char *long_text =
     "vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut "
     "hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.";
 
-void test(const char *id)
-{
-    CONTRAINER({.id = id,
-                .background = GREEN,
-                .paddings = sides_all(8),
-                .child_gap = 8,
-                .height = size_grow(),
-                .direction = DIRECTION_TOP_TO_BOTTOM})
-    {
-        CONTRAINER({.background = BLUE, .width = size_fixed(200), .height = size_fixed(200)});
-        TEXT({.id = "1", .text = "aaaa\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\na", .wrap = true, .size = 20});
-        CONTRAINER({.background = GOLD, .width = size_fixed(100), .height = size_fixed(100)});
-    }
-}
-
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -63,19 +48,15 @@ int main(int argc, char *argv[])
     while (!WindowShouldClose())
     {
         // Update
-        // ui_update();
-        if (IsWindowResized())
-        {
-            ui_resize(GetScreenWidth(), GetScreenHeight());
-        }
-
         if (IsKeyReleased(KEY_SPACE))
         {
-            // Text *text = ui_get_by_id("header");
-            // text->text = "taste your fate";
-            // ui_commit();
-            printf("here\n");
+            Text *text = (Text *)ui_get_by_id("header");
+            assert(text);
+            text->text = "Taste your fate!";
+            ui_commit();
         }
+
+        ui_update();
 
         // Draw
         BeginDrawing();

@@ -123,6 +123,7 @@ typedef struct UI
 {
     Arena arena;
     Contrainer *current;
+    bool update;
 } UI;
 
 void ui_init(void);

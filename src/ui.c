@@ -12,7 +12,7 @@
 #include <raymath.h>
 #include <string.h>
 
-static UI ui = {0};
+static UI ui = {.update = true};
 
 Size size_fit(void)
 {
@@ -696,9 +696,56 @@ void ui_print_tree(void)
     container_print(&ui.current->node, 0);
 }
 
-// Node *ui_get_by_id(const char *id)
-// {
-// }
+static Node *get_by_id_from_container(Contrainer *container, const char *id)
+{
+    for (usize i = 0; container->children.len; i++)
+    {
+        Node *child = container->children.items[i];
+        if (child->id != NULL && strcmp(child->id, id) == 0)
+        {
+            return child;
+        }
+        else if (child->type == NODE_TYPE_CONTRAINER)
+        {
+            Node *result = get_by_id_from_container((Contrainer *)child, id);
+            if (result != NULL)
+            {
+                return result;
+            }
+        }
+    }
+    return NULL;
+}
 
-void ui_update(void);
-void ui_commit(void);
+Node *ui_get_by_id(const char *id)
+{
+    if (ui.current->node.type == NODE_TYPE_CONTRAINER)
+    {
+        return get_by_id_from_container((Contrainer *)ui.current, id);
+    }
+    else
+    {
+        if (ui.current->node.id != NULL && strcmp(ui.current->node.id, id) == 0)
+        {
+            return (Node *)ui.current;
+        }
+        else
+        {
+            return NULL;
+        }
+    }
+}
+
+void ui_update(void)
+{
+    if (IsWindowResized() || ui.update)
+    {
+        ui_resize(GetScreenWidth(), GetScreenHeight());
+        ui.update = false;
+    }
+}
+
+void ui_commit(void)
+{
+    ui.update = true;
+}
