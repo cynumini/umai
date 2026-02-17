@@ -29,18 +29,10 @@ int main(int argc, char *argv[])
     SetTargetFPS(60);
 
     ui_init();
-
-    CONTRAINER({
-        .id = "root",
-        .width = size_fixed(width),
-        .height = size_fixed(height),
-        .direction = DIRECTION_TOP_TO_BOTTOM,
-    })
+    TABS({.id = "root"})
     {
-        CONTRAINER({.background = GRAY, .width = size_grow(), .alignment = ALIGNMENT_CENTER})
-        {
-            TEXT({.id = "header", .text = "Main", .size = 20});
-        }
+        TEXT({.id = "Main", .text = "Main", .size = 20});
+        TEXT({.id = "Add a food", .text = "Work", .size = 20});
     }
 
     ui_print_tree();
@@ -50,9 +42,8 @@ int main(int argc, char *argv[])
         // Update
         if (IsKeyReleased(KEY_SPACE))
         {
-            Text *text = (Text *)ui_get_by_id("header");
-            assert(text);
-            text->text = "Taste your fate!";
+            Tabs *root = (Tabs *)ui_get_by_id("root");
+            root->current = root->current == 0 ? 1 : 0;
             ui_commit();
         }
 

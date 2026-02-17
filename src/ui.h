@@ -76,10 +76,7 @@ struct Node
     bool is_hidden;
 
     u32 (*fit_width)(Node *self);
-    void (*grow_width)(Node *self);
     u32 (*fit_height)(Node *self);
-    void (*grow_height)(Node *self);
-    void (*position)(Node *self);
     void (*update)(Node *self);
     void (*draw)(Node *self);
     void (*print)(Node *self, usize level);
@@ -99,6 +96,9 @@ struct Contrainer
     Direction direction;
     i32 child_gap;
     NodePtrArray children;
+    void (*grow_width)(Contrainer *self);
+    void (*grow_height)(Contrainer *self);
+    void (*position)(Contrainer *self);
 };
 
 typedef struct ContainerOptions
@@ -156,6 +156,23 @@ typedef struct TextOptions
 void text_open(TextOptions options);
 
 #define TEXT(...) text_open((TextOptions)__VA_ARGS__)
+
+typedef struct Tabs
+{
+    Contrainer container;
+    usize current;
+} Tabs;
+
+typedef struct TabsOptions
+{
+    const char *id;
+    Size width;
+    Size height;
+} TabsOptions;
+
+void tabs_open(TabsOptions options);
+
+#define TABS(...) for (usize i = (tabs_open((TabsOptions)__VA_ARGS__), 0); i < 1; container_close(), i = 1)
 
 // TODO: Nodes I will probably need:
 // - Button

@@ -125,9 +125,9 @@ static u32 container_fit_height(Node *node)
 DYNAMIC_ARRAY_IMPL_ADD(TextPtrArray, Text *, text_ptr_array_add)
 DYNAMIC_ARRAY_IMPL_SWAP_REMOVE(TextPtrArray, text_ptr_array_swap_remove)
 
-static void container_grow_width(Node *node)
+static void container_grow_width(Contrainer *self)
 {
-    Contrainer *self = (Contrainer *)node;
+    Node *node = (Node *)self;
 
     f32 remaining_width = node->rect.width;
     remaining_width -= node->paddings.left + node->paddings.right;
@@ -278,16 +278,18 @@ static void container_grow_width(Node *node)
     for (usize i = 0; i < self->children.len; i++)
     {
         Node *child = self->children.items[i];
-        if (child->grow_width != NULL)
+        if (child->type == NODE_TYPE_CONTRAINER)
         {
-            child->grow_width(child);
+            Contrainer *container = (Contrainer *)child;
+            assert(container->grow_width);
+            container->grow_width(container);
         }
     }
 }
 
-static void container_grow_height(Node *node)
+static void container_grow_height(Contrainer *self)
 {
-    Contrainer *self = (Contrainer *)node;
+    Node *node = (Node *)self;
     f32 remaining_height = node->rect.height;
     remaining_height -= node->paddings.top + node->paddings.bottom;
     ArenaSave arena_save = arena_quick_save(&ui.arena);
@@ -360,22 +362,24 @@ static void container_grow_height(Node *node)
     for (usize i = 0; i < self->children.len; i++)
     {
         Node *child = self->children.items[i];
-        if (child->grow_height != NULL)
+        if (child->type == NODE_TYPE_CONTRAINER)
         {
-            child->grow_height(child);
+            Contrainer *container = (Contrainer *)child;
+            assert(container->grow_height);
+            container->grow_height(container);
         }
     }
 }
 
-static void container_position(Node *node)
+static void container_position(Contrainer *self)
 {
-    Contrainer *self = (Contrainer *)node;
+    Node *self_node = (Node *)self;
 
-    f32 left_offset = node->rect.x + node->paddings.right;
-    f32 top_offset = node->rect.y + node->paddings.top;
+    f32 left_offset = self_node->rect.x + self_node->paddings.right;
+    f32 top_offset = self_node->rect.y + self_node->paddings.top;
 
-    f32 remaining_width = node->rect.width;
-    f32 remaining_height = node->rect.width;
+    f32 remaining_width = self_node->rect.width;
+    f32 remaining_height = self_node->rect.width;
 
     for (usize i = 0; i < self->children.len; i++)
     {
@@ -386,7 +390,7 @@ static void container_position(Node *node)
 
     if (self->direction == DIRECTION_LEFT_TO_RIGHT)
     {
-        if (node->alignment == ALIGNMENT_CENTER)
+        if (self_node->alignment == ALIGNMENT_CENTER)
         {
             left_offset += remaining_width / 2;
         }
@@ -395,13 +399,10 @@ static void container_position(Node *node)
             Node *child = self->children.items[i];
             Vector2 child_position = {0};
             child_position.x += left_offset;
-            if (node->alignment == ALIGNMENT_CENTER)
+            child_position.y = top_offset;
+            if (self_node->alignment == ALIGNMENT_CENTER)
             {
-                child_position.y = (node->rect.height - child->rect.height) / 2;
-            }
-            else
-            {
-                child_position.y += top_offset;
+                child_position.y += (self_node->rect.height - child->rect.height) / 2;
             }
             child->rect.x = child_position.x;
             child->rect.y = child_position.y;
@@ -410,7 +411,7 @@ static void container_position(Node *node)
     }
     else if (self->direction == DIRECTION_TOP_TO_BOTTOM)
     {
-        if (node->alignment == ALIGNMENT_CENTER)
+        if (self_node->alignment == ALIGNMENT_CENTER)
         {
             top_offset += remaining_height / 2;
         }
@@ -418,9 +419,9 @@ static void container_position(Node *node)
         {
             Node *child = self->children.items[i];
             Vector2 child_position = {0};
-            if (node->alignment == ALIGNMENT_CENTER)
+            if (self_node->alignment == ALIGNMENT_CENTER)
             {
-                child_position.x = (node->rect.width - child->rect.width) / 2;
+                child_position.x = (self_node->rect.width - child->rect.width) / 2;
             }
             else
             {
@@ -436,9 +437,10 @@ static void container_position(Node *node)
     for (usize i = 0; i < self->children.len; i++)
     {
         Node *child = self->children.items[i];
-        if (child->position != NULL)
+        if (child->type == NODE_TYPE_CONTRAINER)
         {
-            child->position(child);
+            Contrainer *child_container = (Contrainer *)child;
+            child_container->position(child_container);
         }
     }
 }
@@ -455,19 +457,19 @@ static void container_draw(Node *node)
     }
 }
 
-static void node_print_base(Node *node, usize level, const char *type)
+static void node_print_base(Node *node, usize level, const char *name)
 {
     for (usize i = 0; i < level; i++)
     {
         printf("\t");
     }
-    printf("%s(id = %s)\n", type, node->id);
+    printf("%s(id = %s)\n", name, node->id);
 }
 
-static void container_print(Node *node, usize level)
+static void container_base_print(Node *node, usize level, const char *name)
 {
     Contrainer *self = (Contrainer *)node;
-    node_print_base(node, level, "Contrainer");
+    node_print_base(node, level, name);
     for (usize i = 0; i < self->children.len; i++)
     {
         Node *child = self->children.items[i];
@@ -482,11 +484,19 @@ static void container_print(Node *node, usize level)
     }
 }
 
+static void container_print(Node *node, usize level)
+{
+    container_base_print(node, level, "Contrainer");
+}
+
 void container_open(ContainerOptions options)
 {
     Contrainer *self = ARENA_PUSH_STRUCT_ZERO(&ui.arena, Contrainer);
     self->child_gap = options.child_gap;
     self->direction = options.direction;
+    self->position = container_position;
+    self->grow_width = container_grow_width;
+    self->grow_height = container_grow_height;
     self->node.alignment = options.alignment;
     self->node.id = options.id;
     self->node.type = NODE_TYPE_CONTRAINER;
@@ -496,9 +506,6 @@ void container_open(ContainerOptions options)
     self->node.paddings = options.paddings;
     self->node.fit_width = container_fit_width;
     self->node.fit_height = container_fit_height;
-    self->node.grow_width = container_grow_width;
-    self->node.grow_height = container_grow_height;
-    self->node.position = container_position;
     self->node.draw = container_draw;
     self->node.print = container_print;
 
@@ -639,6 +646,175 @@ void text_open(TextOptions options)
     container_add_child(ui.current, &self->node);
 }
 
+static u32 tabs_fit_width(Node *node)
+{
+    Contrainer *self = (Contrainer *)node;
+
+    f32 max_width = 0;
+
+    for (usize i = 0; i < self->children.len; i++)
+    {
+        Node *child = self->children.items[i];
+        assert(child->fit_width);
+        child->rect.width = child->fit_width(child);
+        max_width = MAX(child->rect.width, max_width);
+    }
+
+    if (node->width.type == SIZE_TYPE_FIXED)
+    {
+        return node->width.value;
+    }
+    else
+    {
+        return max_width;
+    }
+}
+
+static u32 tabs_fit_height(Node *node)
+{
+    Contrainer *self = (Contrainer *)node;
+
+    f32 max_height = 0;
+
+    for (usize i = 0; i < self->children.len; i++)
+    {
+        Node *child = self->children.items[i];
+        assert(child->fit_height);
+        child->rect.height = child->fit_height(child);
+        max_height = MAX(child->rect.height, max_height);
+    }
+
+    if (node->height.type == SIZE_TYPE_FIXED)
+    {
+        return node->height.value;
+    }
+    else
+    {
+        return max_height;
+    }
+}
+
+static void tabs_grow_width(Contrainer *self_container)
+{
+    Tabs *self = (Tabs *)self_container;
+    Node *self_node = (Node *)self;
+
+    for (usize i = 0; i < self_container->children.len; i++)
+    {
+        Node *child = self_container->children.items[i];
+        if (child->width.type == SIZE_TYPE_GROW)
+        {
+            child->rect.width = self_node->rect.width;
+        }
+        if (child->type == NODE_TYPE_TEXT)
+        {
+            Text *child_text = (Text *)child;
+            u32 max_text_width = MeasureText(child_text->text, child_text->size);
+            child->rect.width = MIN(self_node->rect.width, max_text_width);
+        }
+        if (child->type == NODE_TYPE_CONTRAINER)
+        {
+            Contrainer *child_container = (Contrainer *)child;
+            assert(child_container->grow_width);
+            child_container->grow_width(child_container);
+        }
+    }
+}
+
+static void tabs_grow_height(Contrainer *self_container)
+{
+    Tabs *self = (Tabs *)self_container;
+    Node *self_node = (Node *)self;
+
+    for (usize i = 0; i < self_container->children.len; i++)
+    {
+        Node *child = self_container->children.items[i];
+        if (child->height.type == SIZE_TYPE_GROW)
+        {
+            child->rect.height = self_node->rect.height - 20; // TODO: Font size for tabs name
+        }
+        if (child->type == NODE_TYPE_CONTRAINER)
+        {
+            Contrainer *child_container = (Contrainer *)child;
+            assert(child_container->grow_height);
+            child_container->grow_height(child_container);
+        }
+    }
+}
+
+static void tabs_positions(Contrainer *self_container)
+{
+
+    Tabs *self = (Tabs *)self_container;
+    Node *self_node = (Node *)self;
+    for (usize i = 0; i < self_container->children.len; i++)
+    {
+        Node *child = self_container->children.items[i];
+        child->rect.x = self_node->rect.x;
+        child->rect.y = self_node->rect.y + 20; // TODO: Font size for tabs name
+        if (child->type == NODE_TYPE_CONTRAINER)
+        {
+            Contrainer *child_container = (Contrainer *)child;
+            assert(child_container->position);
+            child_container->position(child_container);
+        }
+    }
+}
+
+static void tabs_print(Node *node, usize level)
+{
+    container_base_print(node, level, "Tabs");
+}
+
+static void tabs_draw(Node *self_node)
+{
+    Tabs *self = (Tabs *)self_node;
+    Contrainer *self_container = (Contrainer *)self;
+
+    f32 x_offset = self_node->rect.x;
+    f32 y_offset = self_node->rect.y;
+    DrawRectangleRec((Rectangle){x_offset, y_offset, self_node->rect.width, 20}, GRAY); // TODO: Add font size for tabs & color for inactive tab
+    for (usize i = 0; i < self_container->children.len; i++)
+    {
+        Node *child = self_container->children.items[i];
+        const char *text = child->id;
+        f32 width = MeasureText(text, 20);
+        if (i == self->current)
+        {
+            DrawRectangleRec((Rectangle){x_offset, y_offset, width, 20}, WHITE); // TODO: Use background color
+        }
+        DrawText(text, x_offset, y_offset, 20, BLACK);
+        x_offset += width; // TODO: tab gap
+    }
+
+    Node *child = self_container->children.items[self->current];
+    assert(child->draw);
+    child->draw(child);
+}
+
+void tabs_open(TabsOptions options)
+{
+    Tabs *self = ARENA_PUSH_STRUCT_ZERO(&ui.arena, Tabs);
+    self->container.grow_width = tabs_grow_width;
+    self->container.grow_height = tabs_grow_height;
+    self->container.position = tabs_positions;
+    self->container.node.id = options.id;
+    self->container.node.width = options.width;
+    self->container.node.height = options.width;
+    self->container.node.type = NODE_TYPE_CONTRAINER;
+    self->container.node.fit_width = tabs_fit_width;
+    self->container.node.fit_height = tabs_fit_height;
+    self->container.node.print = tabs_print;
+    self->container.node.draw = tabs_draw;
+
+    if (ui.current != NULL)
+    {
+        container_add_child(ui.current, &self->container.node);
+    }
+
+    ui.current = &self->container;
+}
+
 void ui_init(void)
 {
     ui.arena = arena_create(KB(3));
@@ -652,48 +828,41 @@ void ui_deinit(void)
 
 void ui_draw(void)
 {
+    assert(ui.current->node.draw);
     ui.current->node.draw(&ui.current->node);
 }
 
 void ui_resize(u32 width, u32 height)
 {
-    Node *current = &ui.current->node;
+    Node *node = &ui.current->node;
 
     if (width != 0)
     {
-        current->width = size_fixed(width);
+        node->width = size_fixed(width);
     }
     if (height != 0)
     {
-        current->height = size_fixed(height);
+        node->height = size_fixed(height);
     }
 
-    assert(current->fit_width);
-    current->rect.width = current->fit_width(current);
+    assert(node->fit_width);
+    assert(ui.current->grow_width);
+    assert(node->fit_height);
+    assert(ui.current->grow_height);
+    assert(ui.current->position);
 
-    if (current->grow_width != NULL)
-    {
-        current->grow_width(current);
-    }
-
-    assert(current->fit_height);
-    current->rect.height = current->fit_height(current);
-
-    if (current->grow_height != NULL)
-    {
-        current->grow_height(current);
-    }
-
-    if (current->position != NULL)
-    {
-        current->position(current);
-    }
+    node->rect.width = node->fit_width(node);
+    ui.current->grow_width(ui.current);
+    node->rect.height = node->fit_height(node);
+    ui.current->grow_height(ui.current);
+    ui.current->position(ui.current);
 }
 
 void ui_print_tree(void)
 {
-    assert(ui.current != NULL);
-    container_print(&ui.current->node, 0);
+    assert(ui.current);
+    assert(ui.current->node.print);
+    ui.current->node.print(&ui.current->node, 0);
 }
 
 static Node *get_by_id_from_container(Contrainer *container, const char *id)
@@ -719,21 +888,17 @@ static Node *get_by_id_from_container(Contrainer *container, const char *id)
 
 Node *ui_get_by_id(const char *id)
 {
+    if (ui.current->node.id != NULL && strcmp(ui.current->node.id, id) == 0)
+    {
+        return (Node *)ui.current;
+    }
+
     if (ui.current->node.type == NODE_TYPE_CONTRAINER)
     {
         return get_by_id_from_container((Contrainer *)ui.current, id);
     }
-    else
-    {
-        if (ui.current->node.id != NULL && strcmp(ui.current->node.id, id) == 0)
-        {
-            return (Node *)ui.current;
-        }
-        else
-        {
-            return NULL;
-        }
-    }
+
+    return NULL;
 }
 
 void ui_update(void)
