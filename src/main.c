@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 
     SetWindowState(FLAG_WINDOW_RESIZABLE);
 
-    const u32 width = 1175;
+    const u32 width = 1280;
     const u32 height = 720;
 
     InitWindow(width, height, "umai");
@@ -29,11 +29,13 @@ int main(int argc, char *argv[])
     SetTargetFPS(60);
 
     ui_init();
-    TABS({.id = "root"})
-    {
-        TEXT({.id = "Main", .text = "Main", .size = 20});
-        TEXT({.id = "Add a food", .text = "Work", .size = 20});
-    }
+
+    ui.root = container_create(&ui.arena, (ContainerOptions){.direction = DIRECTION_TOP_TO_BOTTOM});
+    Container *bar = container_create(&ui.arena, (ContainerOptions){0});
+    container_add_child(ui.root, (Node *)bar);
+    container_add_child(bar, (Node *)button_create(&ui.arena, "BUTTON1", (ButtonOptions){0}));
+    container_add_child(bar, (Node *)text_create(&ui.arena, "TEXT1", (TextOptions){0}));
+    container_add_child(ui.root, (Node *)text_create(&ui.arena, "TEXT2", (TextOptions){0}));
 
     ui_print_tree();
 
