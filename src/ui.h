@@ -172,6 +172,19 @@ Text *text_create(Arena *arena, const char *text, TextOptions options);
 
 #define TEXT(TEXT_ARG, ...) text_open(TEXT_ARG, (TextOptions)__VA_ARGS__)
 
+typedef struct Style
+{
+    Color background;
+    Color background_accent;
+    Color background_active;
+} Style;
+
+#define DEFAULT_STYLE                                                                                                  \
+    (Style)                                                                                                            \
+    {                                                                                                                  \
+        .background = GRAY, .background_accent = BLUE, .background_active = DARKGRAY,                                  \
+    }
+
 // Button
 typedef struct Button Button;
 
@@ -185,10 +198,10 @@ typedef void (*ButtonOnClick)(Button *self);
 
 struct Button
 {
-    Container container;
+    Container root;
     Text text;
-
     // ButtonState state;
+    Style style;
     void *user_data;
     ButtonOnClick on_click;
 };
@@ -196,6 +209,7 @@ struct Button
 typedef struct ButtonOptions
 {
     DEFAULT_NODE_OPTIONS;
+    Style style;
     void *user_data;
     ButtonOnClick on_click;
 } ButtonOptions;

@@ -389,6 +389,10 @@ static void container_position(Container *self)
 
     if (self->direction == DIRECTION_LEFT_TO_RIGHT)
     {
+        if (self->children.len > 0)
+        {
+            remaining_width -= (self->children.len - 1) * self->child_gap;
+        }
         if (self_node->alignment == ALIGNMENT_CENTER)
         {
             left_offset += remaining_width / 2;
@@ -410,6 +414,10 @@ static void container_position(Container *self)
     }
     else if (self->direction == DIRECTION_TOP_TO_BOTTOM)
     {
+        if (self->children.len > 0)
+        {
+            remaining_height -= (self->children.len - 1) * self->child_gap;
+        }
         if (self_node->alignment == ALIGNMENT_CENTER)
         {
             top_offset += remaining_height / 2;
@@ -723,7 +731,7 @@ static void button_update(Node *self_node, Event event)
     {
         if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
         {
-            self_node->background = DARKGRAY;
+            self_node->background = self->style.background_active;
         }
         else if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
         {
@@ -734,12 +742,12 @@ static void button_update(Node *self_node, Event event)
         }
         else
         {
-            self_node->background = BLUE;
+            self_node->background = self->style.background_accent;
         }
     }
     else
     {
-        self_node->background = GRAY;
+        self_node->background = self->style.background;
     }
 }
 
@@ -748,9 +756,22 @@ static void button_print(Node *node, usize level)
     container_base_print(node, level, "Button");
 }
 
+static bool is_style_empty(Style style)
+{
+    u32 *array = (u32 *)&style;
+    for (usize i = 0; i < sizeof(style) / sizeof(u32); i++)
+    {
+        if (array[i] != 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 static void button_setup(Button *self, Arena *arena, const char *text, ButtonOptions options)
 {
-    container_setup(&self->container, arena,
+    container_setup(&self->root, arena,
                     (ContainerOptions){
                         .id = options.id,
                         .paddings = sides_all(8),
@@ -758,14 +779,18 @@ static void button_setup(Button *self, Arena *arena, const char *text, ButtonOpt
                         .border_size = 1,
                         .border_color = BLACK,
                     });
-    self->container.node.update = button_update;
-    self->container.node.print = button_print;
+    self->root.node.update = button_update;
+    self->root.node.print = button_print;
     text_setup(&self->text, text, (TextOptions){0});
 
-    container_add_child(&self->container, (Node *)&self->text);
-
+    container_add_child(&self->root, (Node *)&self->text);
     self->user_data = options.user_data;
     self->on_click = options.on_click;
+
+    if (is_style_empty(options.style))
+    {
+        self->style = DEFAULT_STYLE;
+    }
 }
 
 Button *button_create(Arena *arena, const char *text, ButtonOptions options)
@@ -776,6 +801,7 @@ Button *button_create(Arena *arena, const char *text, ButtonOptions options)
 
     return self;
 }
+
 // static u32 tabs_fit_width(Node *node)
 // {
 //     Container *self = (Container *)node;
@@ -955,8 +981,7 @@ Tabs *tabs_create(Arena *arena, TabsOptions options)
         &self->root, arena,
         (ContainerOptions){
             .id = options.id, .width = options.width, .height = options.height, .direction = DIRECTION_TOP_TO_BOTTOM});
-    container_setup(&self->top, arena,
-                    (ContainerOptions){.width = size_grow(), .background = DARKGRAY, .child_gap = 8});
+    container_setup(&self->top, arena, (ContainerOptions){.width = size_grow(), .background = GRAY, .child_gap = 8});
     container_setup(&self->bottom, arena, (ContainerOptions){0});
     container_add_child(&self->root, (Node *)&self->top);
     container_add_child(&self->root, (Node *)&self->bottom);
@@ -984,10 +1009,15 @@ static Tab *tab_create(Arena *arena, const char *name, TabOptions options)
 
     self->closable = options.closable;
 
-    container_setup(&self->root, arena, (ContainerOptions){.alignment = ALIGNMENT_CENTER, .child_gap = 4});
+    container_setup(&self->root, arena, (ContainerOptions){.alignment = ALIGNMENT_CENTER, .child_gap = 2, .id = "gf2"});
     self->root.node.update = tab_update;
     text_setup(&self->text, name, (TextOptions){0});
     button_setup(&self->button, arena, "x", (ButtonOptions){0});
+
+    self->button.root.node.paddings = sides_all(0);
+    self->button.root.node.border_size = 0;
+    self->button.style.background = BLANK;
+    self->button.style.background_accent = RED;
 
     container_add_child(&self->root, (Node *)&self->text);
     container_add_child(&self->root, (Node *)&self->button);
