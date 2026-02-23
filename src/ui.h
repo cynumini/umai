@@ -5,16 +5,6 @@
 #include <SKN/array.h>
 #include <raylib.h>
 
-typedef struct Sides
-{
-    u32 top;
-    u32 left;
-    u32 bottom;
-    u32 right;
-} Sides;
-
-Sides sides_all(int value);
-
 typedef enum SizeType
 {
     SIZE_TYPE_FIT,
@@ -58,12 +48,28 @@ typedef enum Alignment // rev 0
     ALIGNMENT_RIGHT_BOTTOM
 } Alignment;
 
+typedef struct Sides // rev 0
+{
+    u32 top;
+    u32 left;
+    u32 bottom;
+    u32 right;
+} Sides;
+
+Sides sides_all(int value);
+
+typedef struct Event
+{
+    bool mouse_hover;
+} Event;
+
 struct Node
 {
     const char *class;
     const char *id;
     Container *parent;
     NodeType type;
+    Arena *arena;
 
     Alignment alignment;
     Color background;
@@ -78,7 +84,7 @@ struct Node
 
     u32 (*fit_width)(Node *self);
     u32 (*fit_height)(Node *self);
-    void (*update)(Node *self);
+    void (*update)(Node *self, Event mouse_position);
     void (*draw)(Node *self);
     void (*print)(Node *self, usize level);
 
@@ -102,14 +108,15 @@ struct Container
     void (*position)(Container *self);
 };
 
-#define DEFAULT_NODE_OPTIONS const char *id
+#define DEFAULT_NODE_OPTIONS                                                                                           \
+    const char *id;                                                                                                    \
+    Size width;                                                                                                        \
+    Size height
 
 typedef struct ContainerOptions
 {
     DEFAULT_NODE_OPTIONS;
     Color background;
-    Size width;
-    Size height;
     Sides paddings;
     Alignment alignment;
     i32 child_gap;
@@ -131,6 +138,7 @@ typedef struct UI
     Arena arena;
     Container *root;
     bool update;
+    Vector2 mouse_position;
 } UI;
 
 void ui_init(void);
@@ -164,31 +172,23 @@ Text *text_create(Arena *arena, const char *text, TextOptions options);
 
 #define TEXT(TEXT_ARG, ...) text_open(TEXT_ARG, (TextOptions)__VA_ARGS__)
 
-typedef struct Tabs
-{
-    Container container;
-    usize current;
-} Tabs;
-
-typedef struct TabsOptions
-{
-    const char *id;
-    Size width;
-    Size height;
-} TabsOptions;
-
-void tabs_open(TabsOptions options);
-
-#define TABS(...) for (usize i = (tabs_open((TabsOptions)__VA_ARGS__), 0); i < 1; container_close(), i = 1)
-
+// Button
 typedef struct Button Button;
 
 typedef void (*ButtonOnClick)(Button *self);
+
+// typedef enum ButtonState
+// {
+//     BUTTON_STATE_NORMAL,
+//     BUTTON_STATE_HOVER,
+// } ButtonState;
 
 struct Button
 {
     Container container;
     Text text;
+
+    // ButtonState state;
     void *user_data;
     ButtonOnClick on_click;
 };
@@ -201,6 +201,66 @@ typedef struct ButtonOptions
 } ButtonOptions;
 
 Button *button_create(Arena *arena, const char *text, ButtonOptions options);
+
+// Tabs
+typedef struct Tab
+{
+    Container root;
+    Text text;
+    Button button;
+
+    bool closable;
+    bool active;
+    usize index;
+} Tab;
+
+typedef struct Tabs
+{
+    Container root;
+    Container top;
+    Container bottom;
+    usize current;
+} Tabs;
+
+typedef struct TabsOptions
+{
+    DEFAULT_NODE_OPTIONS;
+} TabsOptions;
+
+void tabs_open(TabsOptions options);
+
+#define TABS(...) for (usize i = (tabs_open((TabsOptions)__VA_ARGS__), 0); i < 1; container_close(), i = 1)
+
+Tabs *tabs_create(Arena *arena, TabsOptions options);
+
+typedef struct TabOptions
+{
+    bool closable;
+} TabOptions;
+
+void tabs_add_tab(Tabs *tabs, const char *name, TabOptions options, Node *tab);
+
+// CheckBox
+typedef struct CheckBox CheckBox;
+
+typedef void (*CheckBoxOnClick)(CheckBox *self);
+
+struct CheckBox
+{
+    Node node;
+    bool state;
+    void *user_data;
+    CheckBoxOnClick on_click;
+};
+
+typedef struct CheckBoxOptions
+{
+    DEFAULT_NODE_OPTIONS;
+    void *user_data;
+    ButtonOnClick on_click;
+} CheckBoxOptions;
+
+CheckBox *check_box_create(Arena *arena, const char *text, CheckBoxOptions options);
 
 extern UI ui;
 

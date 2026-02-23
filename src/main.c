@@ -13,6 +13,12 @@ const char *long_text =
     "vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut "
     "hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.";
 
+void on_button_click(Button *self)
+{
+    (void)self;
+    printf("click\n");
+}
+
 int main(int argc, char *argv[])
 {
     (void)argc;
@@ -30,14 +36,20 @@ int main(int argc, char *argv[])
 
     ui_init();
 
-    ui.root = container_create(&ui.arena, (ContainerOptions){.direction = DIRECTION_TOP_TO_BOTTOM});
-    Container *bar = container_create(&ui.arena, (ContainerOptions){0});
+    ui.root = container_create(&ui.arena, (ContainerOptions){.id = "root", .direction = DIRECTION_TOP_TO_BOTTOM});
+
+    Container *bar = container_create(&ui.arena, (ContainerOptions){.id = "bar"});
     container_add_child(ui.root, (Node *)bar);
-    container_add_child(bar, (Node *)button_create(&ui.arena, "BUTTON1", (ButtonOptions){0}));
-    container_add_child(bar, (Node *)text_create(&ui.arena, "TEXT1", (TextOptions){0}));
-    container_add_child(ui.root, (Node *)text_create(&ui.arena, "TEXT2", (TextOptions){0}));
+    container_add_child(bar, (Node *)button_create(&ui.arena, "Add a food",
+                                                   (ButtonOptions){.id = "button", .on_click = on_button_click}));
+    Tabs *tabs = tabs_create(&ui.arena, (TabsOptions){.id = "tabs", .width = size_grow(), .height = size_grow()});
+    tabs_add_tab(tabs, "Main", (TabOptions){0}, (Node *)text_create(&ui.arena, "root", (TextOptions){0}));
+    tabs_add_tab(tabs, "Add a food", (TabOptions){0}, (Node *)text_create(&ui.arena, "add a food", (TextOptions){0}));
+    container_add_child(ui.root, (Node *)tabs);
 
     ui_print_tree();
+
+    // usize frame = 0;
 
     while (!WindowShouldClose())
     {
@@ -58,6 +70,8 @@ int main(int argc, char *argv[])
             ui_draw();
         }
         EndDrawing();
+        // printf("frame %zu\n", frame);
+        // frame += 1;
     }
 
     ui_deinit();
