@@ -1,7 +1,7 @@
 #include <math.h>
 #include <raylib.h>
 
-#include "ui.h"
+#include "ui.hpp"
 
 #include <SKN/arena.h>
 #include <stdio.h>
@@ -36,15 +36,15 @@ int main(int argc, char *argv[])
 
     ui_init();
 
-    ui.root = container_create(&ui.arena, (ContainerOptions){.id = "root", .direction = DIRECTION_TOP_TO_BOTTOM});
+    ui.root = container_create(&ui.arena, {.id = "root", .direction = DIRECTION_TOP_TO_BOTTOM});
 
-    Container *bar = container_create(&ui.arena, (ContainerOptions){.id = "bar"});
+    Container *bar = container_create(&ui.arena, {.id = "bar"});
     container_add_child(ui.root, (Node *)bar);
-    container_add_child(bar, (Node *)button_create(&ui.arena, "Add a food",
-                                                   (ButtonOptions){.id = "button", .on_click = on_button_click}));
-    Tabs *tabs = tabs_create(&ui.arena, (TabsOptions){.id = "tabs", .width = size_grow(), .height = size_grow()});
-    tabs_add_tab(tabs, "Main", (TabOptions){0}, (Node *)text_create(&ui.arena, "root", (TextOptions){0}));
-    tabs_add_tab(tabs, "Add a food", (TabOptions){0}, (Node *)text_create(&ui.arena, "add a food", (TextOptions){0}));
+    container_add_child(bar,
+                        (Node *)button_create(&ui.arena, "Add a food", {.id = "button", .on_click = on_button_click}));
+    Tabs *tabs = tabs_create(&ui.arena, {.id = "tabs", .width = size_grow(), .height = size_grow()});
+    tabs_add_tab(tabs, "Main", {0}, (Node *)text_create(&ui.arena, "root", {0}));
+    tabs_add_tab(tabs, "Add a food", {0}, (Node *)text_create(&ui.arena, "add a food", {0}));
     container_add_child(ui.root, (Node *)tabs);
 
     ui_print_tree();

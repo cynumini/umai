@@ -5,23 +5,6 @@
 #include <SKN/array.h>
 #include <raylib.h>
 
-typedef enum SizeType
-{
-    SIZE_TYPE_FIT,
-    SIZE_TYPE_GROW,
-    SIZE_TYPE_FIXED
-} SizeType;
-
-typedef struct Size
-{
-    SizeType type;
-    u32 value;
-} Size;
-
-Size size_fit(void);
-Size size_grow(void);
-Size size_fixed(u32 value);
-
 typedef struct Node Node;
 typedef struct Container Container;
 
@@ -56,7 +39,24 @@ typedef struct Sides // rev 0
     u32 right;
 } Sides;
 
-Sides sides_all(int value);
+Sides sides_all(u32 value);
+
+typedef enum SizeType // rev 0
+{
+    SIZE_TYPE_FIT,
+    SIZE_TYPE_GROW,
+    SIZE_TYPE_FIXED
+} SizeType;
+
+typedef struct Size
+{
+    SizeType type;
+    u32 value;
+} Size;
+
+Size size_fit(void);
+Size size_grow(void);
+Size size_fixed(u32 value);
 
 typedef struct Event
 {
@@ -65,7 +65,6 @@ typedef struct Event
 
 struct Node
 {
-    const char *class;
     const char *id;
     Container *parent;
     NodeType type;
@@ -109,20 +108,22 @@ struct Container
 };
 
 #define DEFAULT_NODE_OPTIONS                                                                                           \
-    const char *id;                                                                                                    \
-    Size width;                                                                                                        \
-    Size height
+    const char *id{};                                                                                                  \
+    Size width{};                                                                                                      \
+    Size height                                                                                                        \
+    {                                                                                                                  \
+    }
 
 typedef struct ContainerOptions
 {
     DEFAULT_NODE_OPTIONS;
-    Color background;
-    Sides paddings;
-    Alignment alignment;
-    i32 child_gap;
-    Direction direction;
-    u32 border_size;
-    Color border_color;
+    Color background{};
+    Sides paddings{};
+    Alignment alignment{};
+    i32 child_gap{};
+    Direction direction{};
+    u32 border_size{};
+    Color border_color{};
 } ContainerOptions;
 
 void container_open(ContainerOptions options);
@@ -135,10 +136,10 @@ void container_add_child(Container *container, Node *child);
 
 typedef struct UI
 {
-    Arena arena;
-    Container *root;
-    bool update;
-    Vector2 mouse_position;
+    Arena arena{};
+    Container *root{};
+    bool update{};
+    Vector2 mouse_position{};
 } UI;
 
 void ui_init(void);
@@ -163,8 +164,8 @@ DEFINE_DYNAMIC_ARRAY(TextPtrArray, Text *);
 typedef struct TextOptions
 {
     DEFAULT_NODE_OPTIONS;
-    bool wrap;
-    u32 size;
+    bool wrap{};
+    u32 size{};
 } TextOptions;
 
 void text_open(const char *text, TextOptions options);
@@ -174,15 +175,17 @@ Text *text_create(Arena *arena, const char *text, TextOptions options);
 
 typedef struct Style
 {
-    Color background;
-    Color background_accent;
-    Color background_active;
+    Color background{};
+    Color background_accent{};
+    Color background_active{};
 } Style;
 
 #define DEFAULT_STYLE                                                                                                  \
-    (Style)                                                                                                            \
+                                                                                                                       \
     {                                                                                                                  \
-        .background = GRAY, .background_accent = BLUE, .background_active = DARKGRAY,                                  \
+        .background = GRAY,                                                                                            \
+        .background_accent = BLUE,                                                                                     \
+        .background_active = DARKGRAY,                                                                                 \
     }
 
 // Button
@@ -209,9 +212,9 @@ struct Button
 typedef struct ButtonOptions
 {
     DEFAULT_NODE_OPTIONS;
-    Style style;
-    void *user_data;
-    ButtonOnClick on_click;
+    Style style{};
+    void *user_data{};
+    ButtonOnClick on_click{};
 } ButtonOptions;
 
 Button *button_create(Arena *arena, const char *text, ButtonOptions options);
@@ -249,7 +252,7 @@ Tabs *tabs_create(Arena *arena, TabsOptions options);
 
 typedef struct TabOptions
 {
-    bool closable;
+    bool closable{};
 } TabOptions;
 
 void tabs_add_tab(Tabs *tabs, const char *name, TabOptions options, Node *tab);

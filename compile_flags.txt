@@ -1,8 +1,5 @@
-src/*.c
--o out/umai
--lraylib
 -Wall
 -Wpedantic
 -Wextra
--g
+-std=c++20
 -Isakana/include

@@ -1,4 +1,4 @@
-#include "ui.h"
+#include "ui.hpp"
 #include "SKN/arena.h"
 #include "SKN/array.h"
 #include "SKN/types.h"
@@ -17,22 +17,22 @@ UI ui = {.update = true};
 
 Size size_fit(void)
 {
-    return (Size){SIZE_TYPE_FIT, 0};
+    return {SIZE_TYPE_FIT, 0};
 }
 
 Size size_grow(void)
 {
-    return (Size){SIZE_TYPE_GROW, 0};
+    return {SIZE_TYPE_GROW, 0};
 }
 
 Size size_fixed(u32 value)
 {
-    return (Size){SIZE_TYPE_FIXED, value};
+    return {SIZE_TYPE_FIXED, value};
 }
 
-Sides sides_all(int value)
+Sides sides_all(u32 value)
 {
-    return (Sides){value, value, value, value};
+    return {value, value, value, value};
 }
 
 DYNAMIC_ARRAY_IMPL_ADD(NodePtrArray, Node *, node_ptr_array_add)
@@ -400,7 +400,7 @@ static void container_position(Container *self)
         for (usize i = 0; i < self->children.len; i++)
         {
             Node *child = self->children.items[i];
-            Vector2 child_position = {0};
+            Vector2 child_position = Vector2Zero();
             child_position.x += left_offset;
             child_position.y = top_offset;
             if (self_node->alignment == ALIGNMENT_CENTER)
@@ -425,7 +425,7 @@ static void container_position(Container *self)
         for (usize i = 0; i < self->children.len; i++)
         {
             Node *child = self->children.items[i];
-            Vector2 child_position = {0};
+            Vector2 child_position = Vector2Zero();
             if (self_node->alignment == ALIGNMENT_CENTER)
             {
                 child_position.x = (self_node->rect.width - child->rect.width) / 2;
@@ -772,16 +772,16 @@ static bool is_style_empty(Style style)
 static void button_setup(Button *self, Arena *arena, const char *text, ButtonOptions options)
 {
     container_setup(&self->root, arena,
-                    (ContainerOptions){
+                    {
                         .id = options.id,
-                        .paddings = sides_all(8),
                         .background = GRAY,
+                        .paddings = sides_all(8),
                         .border_size = 1,
                         .border_color = BLACK,
                     });
     self->root.node.update = button_update;
     self->root.node.print = button_print;
-    text_setup(&self->text, text, (TextOptions){0});
+    text_setup(&self->text, text, {0});
 
     container_add_child(&self->root, (Node *)&self->text);
     self->user_data = options.user_data;
@@ -979,10 +979,10 @@ Tabs *tabs_create(Arena *arena, TabsOptions options)
 
     container_setup(
         &self->root, arena,
-        (ContainerOptions){
+        {
             .id = options.id, .width = options.width, .height = options.height, .direction = DIRECTION_TOP_TO_BOTTOM});
-    container_setup(&self->top, arena, (ContainerOptions){.width = size_grow(), .background = GRAY, .child_gap = 8});
-    container_setup(&self->bottom, arena, (ContainerOptions){0});
+    container_setup(&self->top, arena, {.width = size_grow(), .background = GRAY, .child_gap = 8});
+    container_setup(&self->bottom, arena, {0});
     container_add_child(&self->root, (Node *)&self->top);
     container_add_child(&self->root, (Node *)&self->bottom);
 
@@ -1007,13 +1007,12 @@ static Tab *tab_create(Arena *arena, const char *name, TabOptions options)
 {
     Tab *self = ARENA_PUSH_STRUCT_ZERO(arena, Tab);
 
-    self->closable = options.closable;
-
-    container_setup(&self->root, arena, (ContainerOptions){.alignment = ALIGNMENT_CENTER, .child_gap = 2, .id = "gf2"});
+    container_setup(&self->root, arena, {.alignment = ALIGNMENT_CENTER, .child_gap = 2});
     self->root.node.update = tab_update;
-    text_setup(&self->text, name, (TextOptions){0});
-    button_setup(&self->button, arena, "x", (ButtonOptions){0});
 
+    text_setup(&self->text, name, {});
+
+    button_setup(&self->button, arena, "x", {0});
     self->button.root.node.paddings = sides_all(0);
     self->button.root.node.border_size = 0;
     self->button.style.background = BLANK;
@@ -1021,6 +1020,8 @@ static Tab *tab_create(Arena *arena, const char *name, TabOptions options)
 
     container_add_child(&self->root, (Node *)&self->text);
     container_add_child(&self->root, (Node *)&self->button);
+
+    self->closable = options.closable;
 
     return self;
 }
