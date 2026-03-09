@@ -1,5 +1,7 @@
 -Wall
 -Wpedantic
 -Wextra
--std=c++20
--Isakana/include
+-Werror
+-lraylib
+-g
+-std=c++17
