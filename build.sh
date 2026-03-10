@@ -3,7 +3,7 @@
 set -e
 
 warnings="-Wall -Wpedantic -Wextra -Werror"
-libs="-lraylib"
+libs="-lraylib -lsqlite3"
 flags="$warnings $libs -g -std=c++17"
 src="./src/main.cpp"
 bin="./out/umai"
