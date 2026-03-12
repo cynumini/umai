@@ -9,12 +9,16 @@
 
 static_assert(sizeof(int) == 4);
 using i32 = int;
+static_assert(sizeof(long) == 8);
+using i64 = long;
 static_assert(sizeof(unsigned int) == 4);
 using u32 = unsigned int;
-static_assert(sizeof(unsigned int) == 4);
-using u32 = unsigned int;
+static_assert(sizeof(unsigned long) == 8);
+using u64 = long;
 static_assert(sizeof(float) == 4);
 using f32 = float;
+static_assert(sizeof(double) == 8);
+using f64 = double;
 
 using usize = size_t;
 
@@ -35,6 +39,11 @@ using usize = size_t;
         abort();                                                                                                       \
     } while (false)
 
+template <typename T> T max(T a, T b)
+{
+    return a > b ? a : b;
+}
+
 namespace UI
 {
 namespace state
@@ -45,6 +54,16 @@ Vector2 temp_offset;
 f32 width;
 f32 height;
 bool same_line = false;
+// table
+constexpr usize table_cell_len = 64;
+constexpr usize table_max_row = 32;
+constexpr usize table_max_column = 4;
+char table_data[table_max_row][table_max_column][table_cell_len] = {};
+f32 table_cell_width[table_max_column] = {};
+bool table_is_inside = true;
+usize table_row_count = 0;
+usize table_column_count = 0;
+usize table_max_column_count = 0;
 } // namespace state
 namespace style
 {
@@ -137,17 +156,33 @@ bool button(const char *text)
 
 void label(const char *text)
 {
-    if (!container_is_visible) return;
+    if (state::table_is_inside == true)
+    {
+        using namespace state;
+        usize row = table_row_count;
+        usize column = table_column_count;
+        ASSERT(strlen(text) < table_cell_len);
+        ASSERT(row < table_max_row);
+        ASSERT(column < table_max_column);
+        strcpy(table_data[row][column], text);
+        table_column_count++;
+        f32 width = MeasureText(text, 20);
+        table_cell_width[column] = max(width, table_cell_width[column]);
+    }
+    else
+    {
+        if (!container_is_visible) return;
 
-    Vector2 local_offset = calc_local_offset();
+        Vector2 local_offset = calc_local_offset();
 
-    f32 padding = 2;
-    i32 width = MeasureText(text, 20);
-    i32 height = 20;
-    Rectangle rectangle = {local_offset.x, local_offset.y, width + (padding * 2), height + (padding * 2)};
-    DrawText(text, local_offset.x + 2, local_offset.y + 2, height, BLACK);
-    previous = rectangle;
-    state::same_line = false;
+        f32 padding = 2;
+        i32 width = MeasureText(text, 20);
+        i32 height = 20;
+        Rectangle rectangle = {local_offset.x, local_offset.y, width + (padding * 2), height + (padding * 2)};
+        DrawText(text, local_offset.x + 2, local_offset.y + 2, height, BLACK);
+        previous = rectangle;
+        state::same_line = false;
+    }
 }
 
 void input(char *buffer, f32 width, const char *placeholder = "")
@@ -259,56 +294,228 @@ void tab_end()
     container_is_visible = true;
 }
 
-} // namespace UI
-
-void handle_sqlite3_error_message(char *errmsg)
+void table_begin()
 {
-    printf("SQL: %s\n", errmsg);
-    sqlite3_free(errmsg);
-    UNREACHABLE;
+    state::table_row_count = 0;
+    state::table_is_inside = true;
+    memset(state::table_data, 0, sizeof(state::table_cell_width));
+    memset(state::table_cell_width, 0, sizeof(state::table_cell_width));
 }
+
+void table_end()
+{
+    using namespace state;
+    if (container_is_visible)
+    {
+        table_column_count = table_max_column_count;
+        f32 line_thick = 1;
+        Vector2 initial_offset = {offset.x, previous.y + previous.height};
+        Rectangle rectangle = {
+            initial_offset.x,
+            initial_offset.y,
+            (line_thick * (table_column_count + 1)) + (style::child_gap * (table_column_count * 2)),
+            (line_thick * (table_row_count + 1)) + (style::child_gap * (table_row_count * 2)),
+        };
+        rectangle.height += table_row_count * style::font_size;
+        for (usize column = 0; column < table_column_count; column++)
+        {
+            rectangle.width += table_cell_width[column];
+        }
+        Vector2 offset = {initial_offset.x + style::child_gap + line_thick,
+                          initial_offset.y + style::child_gap + line_thick};
+        for (usize row = 0; row < table_row_count; row++)
+        {
+            f32 offset_x = offset.x;
+            for (usize column = 0; column < table_column_count; column++)
+            {
+                if (row == 0)
+                {
+                    f32 y = rectangle.y;
+                    f32 x = offset_x + table_cell_width[column] + style::child_gap + line_thick;
+                    DrawLine(x, y, x, y + rectangle.height, BLACK);
+                }
+                const char *text = table_data[row][column];
+                DrawText(text, offset_x, offset.y, style::font_size, BLACK);
+                offset_x += table_cell_width[column] + style::child_gap * 2 + line_thick;
+            }
+            f32 x = rectangle.x;
+            f32 y = offset.y + style::font_size + style::child_gap;
+            DrawLine(x, y, x + rectangle.width, y, BLACK);
+            offset.y += style::font_size + style::child_gap * 2 + line_thick;
+        }
+        DrawRectangleLinesEx(rectangle, 1, BLACK);
+        previous = rectangle;
+    }
+    table_is_inside = false;
+}
+
+void row_begin()
+{
+    state::table_column_count = 0;
+}
+
+void row_end()
+{
+    state::table_row_count++;
+    state::table_max_column_count = max(state::table_max_column_count, state::table_column_count);
+}
+
+} // namespace UI
 
 struct Tab
 {
     char name[128] = {};
 };
 
+constexpr usize food_name_max_strlen = 64;
+struct Food
+{
+    i64 id;
+    i64 created;
+    char name[food_name_max_strlen];
+    f32 energy;
+};
+
 int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
 {
     InitWindow(1280, 720, "umai");
 
+    sqlite3 *database;
+    bool database_need_update = true;
+
+    constexpr usize foods_max_len = 32;
+    usize foods_len = 0;
+    Food foods[foods_max_len];
+
+    auto database_exec = [&database](const char *sql) {
+        char *errmsg;
+        if (sqlite3_exec(database, sql, nullptr, nullptr, &errmsg) != SQLITE_OK)
+        {
+            printf("SQL: %s\n", errmsg);
+            sqlite3_free(errmsg);
+            UNREACHABLE;
+        }
+    };
+    {
+        const char *path = "database.db";
+        struct stat path_stat;
+        bool is_fresh_start = stat(path, &path_stat) == 0 ? false : true;
+        ASSERT(sqlite3_open(path, &database) == SQLITE_OK);
+        const char *sql = "CREATE TABLE food ("
+                          "id INTEGER NOT NULL UNIQUE,"
+                          "created INTEGER NOT NULL,"
+                          "name TEXT NOT NULL,"
+                          "energy REAL NOT NULL,"
+                          "PRIMARY KEY(id)"
+                          ") STRICT;";
+        if (is_fresh_start) database_exec(sql);
+    }
+
+    // Setup tabs
     constexpr usize tabs_capacity = 3;
     Tab tabs[tabs_capacity] = {};
     usize tabs_len = 0;
-
-    usize active_tab_id = 0;
-
-    const char *path = "database.db";
-    bool is_fresh_start = false;
-    {
-        struct stat path_stat;
-        is_fresh_start = stat(path, &path_stat) == 0 ? false : true;
-    }
-
-    sqlite3 *database;
-    ASSERT(sqlite3_open(path, &database) == SQLITE_OK);
-    const char *sql = "CREATE TABLE food ("
-                      "id INTEGER NOT NULL UNIQUE,"
-                      "created INTEGER NOT NULL,"
-                      "name TEXT NOT NULL,"
-                      "energy REAL NOT NULL,"
-                      "PRIMARY KEY(id)"
-                      ") STRICT;";
-    {
-        char *errmsg;
-        if (is_fresh_start and sqlite3_exec(database, sql, nullptr, nullptr, &errmsg) != SQLITE_OK)
+    usize tabs_active = 0;
+    auto close_tab = [&tabs, &tabs_len, &tabs_active](usize index) {
+        if (index == tabs_len - 1)
         {
-            handle_sqlite3_error_message(errmsg);
+            tabs[index] = {};
+            tabs_len--;
+            tabs_active--;
         }
-    }
+        else
+        {
+            for (usize i = index + 1; i < tabs_len; i++)
+            {
+                tabs[i - 1] = tabs[i];
+            }
+            tabs_len--;
+            tabs_active--;
+            tabs[tabs_len] = {};
+        }
+    };
 
     while (!WindowShouldClose())
     {
+        if (database_need_update)
+        {
+            memset(foods, 0, sizeof(foods));
+
+            sqlite3_stmt *stmt = nullptr;
+            const char *sql = "SELECT * FROM food";
+            int rc = sqlite3_prepare_v2(database, sql, -1, &stmt, NULL);
+            ASSERT(rc == SQLITE_OK);
+            rc = sqlite3_step(stmt);
+            usize i = 0;
+            while (rc != SQLITE_DONE)
+            {
+                Food food;
+                int column_count = sqlite3_column_count(stmt);
+                for (int i = 0; i < column_count; i++)
+                {
+                    int type = sqlite3_column_type(stmt, i);
+                    const char *name = sqlite3_column_name(stmt, i);
+                    switch (type)
+                    {
+                    case SQLITE_INTEGER: {
+                        int64_t value = sqlite3_column_int64(stmt, i);
+                        if (strcmp(name, "id") == 0)
+                        {
+                            food.id = value;
+                        }
+                        else if (strcmp(name, "created") == 0)
+                        {
+                            food.created = value;
+                        }
+                        else
+                        {
+                            printf("%s(INTEGER) = %li\n", name, value);
+                            UNREACHABLE;
+                        }
+                        break;
+                    }
+                    case SQLITE_TEXT: {
+                        const unsigned char *value = sqlite3_column_text(stmt, i);
+                        if (strcmp(name, "name") == 0)
+                        {
+                            const char *name = (const char *)value;
+                            ASSERT(strlen(name) < food_name_max_strlen);
+                            strcpy(food.name, name);
+                        }
+                        else
+                        {
+                            printf("%s(TEXT) = %s\n", name, value);
+                            UNREACHABLE;
+                        }
+                        break;
+                    }
+                    case SQLITE_FLOAT: {
+                        double value = sqlite3_column_double(stmt, i);
+                        if (strcmp(name, "energy") == 0)
+                        {
+                            food.energy = (float)value;
+                        }
+                        else
+                        {
+                            printf("%s(FLOAT) = %f\n", name, value);
+                            UNREACHABLE;
+                        }
+                        break;
+                    }
+                    default: {
+                        UNREACHABLE;
+                        break;
+                    }
+                    }
+                }
+                ASSERT(i < foods_max_len);
+                foods[i] = food;
+                i++;
+                foods_len = i;
+                rc = sqlite3_step(stmt);
+            }
+            rc = sqlite3_finalize(stmt);
+        }
         BeginDrawing();
         ClearBackground(LIGHTGRAY);
         UI::begin(GetScreenWidth(), GetScreenHeight());
@@ -317,13 +524,30 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
             {
                 tabs_len++;
                 ASSERT(tabs_len <= tabs_capacity);
-                active_tab_id = tabs_len;
+                tabs_active = tabs_len;
             }
-            UI::tab_container_begin(&active_tab_id);
+            UI::tab_container_begin(&tabs_active);
             {
                 UI::tab_begin("Main");
                 {
-                    UI::button("Main 1");
+                    UI::table_begin();
+                    {
+                        for (usize i = 0; i < foods_len; i++)
+                        {
+                            UI::row_begin();
+                            char buffer[64];
+                            sprintf(buffer, "%li", foods[i].id);
+                            UI::label(buffer);
+                            sprintf(buffer, "%li", foods[i].created);
+                            UI::label(buffer);
+                            UI::label(foods[i].name);
+                            sprintf(buffer, "%f", foods[i].energy);
+                            UI::label(buffer);
+                            UI::row_end();
+                        }
+                    }
+                    UI::table_end();
+                    UI::label("A");
                 }
                 UI::tab_end();
 
@@ -348,35 +572,16 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char *argv[])
                             char sql[256];
                             sprintf(sql, "INSERT INTO food (created, name, energy) VALUES(%ld, \"%s\", %f)", created,
                                     tabs[i].name, 100.0);
-                            {
-                                char *errmsg;
-                                if (sqlite3_exec(database, sql, NULL, NULL, &errmsg) != SQLITE_OK)
-                                {
-                                    handle_sqlite3_error_message(errmsg);
-                                }
-                            }
+                            database_exec(sql);
+                            close_tab(i);
                         }
                         offset.x += add_rect.width + UI::style::child_gap;
                         UI::temporarily_change_offset(offset);
                         if (UI::button("Cancel"))
                         {
-                            if (i == (tabs_len - 1))
-                            {
-                                tabs[i] = {};
-                                tabs_len--;
-                                active_tab_id--;
-                            }
-                            else
-                            {
-                                for (usize j = i + 1; j < tabs_len; j++)
-                                {
-                                    tabs[j - 1] = tabs[j];
-                                }
-                                tabs_len--;
-                                tabs[tabs_len] = {};
-                                active_tab_id--;
-                            }
+                            close_tab(i);
                         }
+                        database_need_update = true;
                     }
                     UI::tab_end();
                 }
