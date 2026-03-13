@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define SAKANA_ASSERT(expr)                                                                                            \
     do                                                                                                                 \
@@ -39,8 +39,64 @@ static_assert(sizeof(double) == 8);
 using f64 = double;
 using usize = size_t;
 
+template <typename T, usize size> struct Array
+{
+    T items[size];
+    usize capacity = size;
+    usize len = 0;
+
+    T &operator[](usize index)
+    {
+        assert(index < this->len);
+        return this->items[index];
+    }
+
+    const T &operator[](usize index) const
+    {
+        assert(index < this->len);
+        return this->items[index];
+    }
+
+    void add(T value)
+    {
+        assert(this->len < this->capacity);
+        this->items[this->len] = value;
+        this->len++;
+    }
+
+    void reset()
+    {
+        this->len = 0;
+    }
+
+    T *begin()
+    {
+        return this->items;
+    }
+
+    T *end()
+    {
+        return this->items + this->len;
+    }
+
+    const T *begin() const
+    {
+        return this->items;
+    }
+
+    const T *end() const
+    {
+        return this->items + this->len;
+    }
+};
+
 template <typename T> T max(T a, T b)
 {
     return a > b ? a : b;
+}
+
+template <typename T> T min(T a, T b)
+{
+    return a < b ? a : b;
 }
 } // namespace sakana
