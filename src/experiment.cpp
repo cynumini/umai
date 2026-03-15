@@ -45,11 +45,7 @@ i32 main([[maybe_unused]] i32 argc, [[maybe_unused]] char *argv[])
                 .height = ui::size_fixed(100),
             });
             ui::container_end();
-            ui::scrollview_begin(&scroll, {
-                .background = WHITE,
-                .width = ui::size_grow(),
-                .height = ui::size_grow(),
-            });
+            ui::scrollview_begin(&scroll, {.background = WHITE, .width = ui::size_grow(), .height = ui::size_grow()});
             {
                 ui::container_begin({.direction = ui::Direction::top_to_bottom});
                 for (usize i = 0; i < 500; i++)
@@ -64,8 +60,6 @@ i32 main([[maybe_unused]] i32 argc, [[maybe_unused]] char *argv[])
         }
         ui::container_end();
         ui::end();
-        // ui::scrollview_begin();
-        // ui::scrollview_end();
         // draw
         BeginDrawing();
         ClearBackground(RAYWHITE);

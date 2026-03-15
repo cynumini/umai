@@ -4,8 +4,8 @@ set -e
 
 warnings="-Wall -Wpedantic -Wextra -Werror"
 libs="-lraylib -lsqlite3"
-flags="$warnings $libs -g -std=c++17"
-src="./src/main.cpp"
+flags="$warnings $libs -g -std=c++20"
+src="./src/experiment.cpp ./src/experiment-ui.cpp"
 bin="./out/umai"
 
 mkdir -p out
