@@ -1,8 +1,0 @@
--Wall
--Wpedantic
--Wextra
--Werror
--lraylib
--lsqlite3
--g
--std=c++17
