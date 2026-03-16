@@ -1,8 +1,16 @@
 const std = @import("std");
 const c = @import("raylib_h.zig");
 
+/// Vector2, 2 components
+pub const Vector2 = c.Vector2;
 /// Color, 4 components, R8G8B8A8 (32bit)
 pub const Color = c.Color;
+/// Rectangle, 4 components
+pub const Rectangle = c.Rectangle;
+/// Texture, tex data stored in GPU memory (VRAM)
+pub const Texture = c.Texture;
+/// RenderTexture, fbo for texture rendering
+pub const RenderTexture = c.RenderTexture;
 
 pub const Flags = packed struct(c_int) {
     _padding0: u1 = 0,
@@ -41,39 +49,44 @@ pub const Window = struct {
     }
 
     /// Check if application should close (KEY_ESCAPE pressed or windows close icon clicked)
-    pub fn should_close(_: Self) bool {
+    pub fn shouldClose(_: Self) bool {
         return c.WindowShouldClose();
     }
 
     /// Check if window has been resized last frame
-    pub fn is_resized(_: Self) bool {
+    pub fn isResized(_: Self) bool {
         return c.IsWindowResized();
     }
 
     /// Get current screen width
-    pub fn get_width(_: Self) u32 {
+    pub fn getWidth(_: Self) u32 {
         return @intCast(c.GetScreenWidth());
     }
 
     /// Get current screen height
-    pub fn get_height(_: Self) u32 {
+    pub fn getHeight(_: Self) u32 {
         return @intCast(c.GetScreenHeight());
     }
 };
 
 /// Set background color (framebuffer clear color)
-pub const clear_background = c.ClearBackground;
+pub const clearBackground = c.ClearBackground;
 /// Setup canvas (framebuffer) to start drawing
-pub const begin_drawing = c.BeginDrawing;
+pub const beginDrawing = c.BeginDrawing;
 /// End canvas drawing and swap buffers (double buffering)
-pub const end_drawing = c.EndDrawing;
+pub const endDrawing = c.EndDrawing;
 /// Setup init configuration flags (view FLAGS)
-pub fn set_config_flags(flags: Flags) void {
+pub fn setConfigFlags(flags: Flags) void {
     c.SetConfigFlags(@bitCast(flags));
 }
 /// Get mouse wheel movement for X or Y, whichever is larger
-pub const get_mouse_wheel_move = c.GetMouseWheelMove;
+pub const getMouseWheelMove = c.GetMouseWheelMove;
+/// Draw a color-filled rectangle
+pub const drawRectangleRec = c.DrawRectangleRec;
+/// Draw text (using default font)
+pub const drawText = c.DrawText;
+pub const drawTextureRec = c.DrawTextureRec; // fix
 /// Measure string width for default font
-pub fn measure_text(text: [*:0]const u8, font_size: u32) u32 {
+pub fn measureText(text: [*:0]const u8, font_size: u32) u32 {
     return @intCast(c.MeasureText(text, @intCast(font_size)));
 }

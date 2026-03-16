@@ -1,7 +1,7 @@
 const std = @import("std");
 const rl = @import("raylib");
 
-const ui = @import("ui.zig");
+const UI = @import("ui.zig");
 
 const assert = std.debug.assert;
 
@@ -10,42 +10,57 @@ pub fn main() !void {
     var height: u32 = 720;
     var scroll: u32 = 0;
 
-    rl.set_config_flags(.{ .window_resizable = true });
+    rl.setConfigFlags(.{ .window_resizable = true });
     const window = rl.Window.init(width, height, "umai");
     defer window.deinit();
 
-    while (!window.should_close()) {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    var v = rl.RenderTexture.init(0, 0);
+    defer v.deinit();
+
+    while (!window.shouldClose()) {
+        var ui = UI.init();
+        defer _ = arena.reset(.retain_capacity);
+
         // update
-        if (window.is_resized()) {
-            width = window.get_width();
-            height = window.get_height();
+        if (window.isResized()) {
+            width = window.getWidth();
+            height = window.getHeight();
         }
-        try ui.begin(width, height, .{ .background = .red });
+        try ui.begin(allocator, .{
+            .background = .red,
+            .width = .{ .fixed = width },
+            .height = .{ .fixed = height },
+        });
         {
-            try ui.container_begin(.{ .background = .green, .width = .grow, .height = .grow });
+            try ui.begin(allocator, .{ .background = .green, .width = .grow, .height = .grow });
             {
-                try ui.label("Yes, I am!", .{});
-                try ui.container_begin(.{
+                try ui.label(allocator, "Yes, I am!", .{});
+                try ui.begin(allocator, .{
                     .background = .blue,
                     .width = .{ .fixed = 100 },
                     .height = .{ .fixed = 100 },
                 });
-                ui.container_end();
-                try ui.scroll_view_begin(&scroll, .{ .width = .grow, .height = .grow });
+                try ui.end(allocator);
+                try ui.scrollViewBegin(allocator, &scroll, &v, .{ .width = .grow, .height = .grow });
                 {
-                    try ui.container_begin(.{ .direction = .top_to_bottom });
-                    for (0..500) |i| try ui.label_fmt("Hello, number {}!", .{i + 1}, .{});
-                    ui.container_end();
+                    try ui.begin(allocator, .{ .direction = .top_to_bottom });
+                    for (0..500) |i| try ui.labelFmt(allocator, "Hello, number {}!", .{i + 1}, .{});
+                    try ui.end(allocator);
                 }
-                ui.scroll_view_end();
+                try ui.scrollViewEnd(allocator);
             }
-            ui.container_end();
+            try ui.end(allocator);
         }
-        ui.end();
+        try ui.end(allocator);
         // draw
-        rl.begin_drawing();
-        rl.clear_background(rl.Color.white);
-        ui.draw();
-        rl.end_drawing();
+        rl.beginDrawing();
+        rl.clearBackground(rl.Color.white);
+        try ui.draw();
+        rl.endDrawing();
+        // break;
     }
 }

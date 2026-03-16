@@ -1,4 +1,4 @@
-// const __root = @This();
+const Self = @This();
 // pub const __builtin = @import("std").zig.c_translation.builtins;ray
 // pub const __helpers = @import("std").zig.c_translation.helpers;
 //
@@ -11,58 +11,57 @@
 // pub const __builtin_va_list = [1]struct___va_list_tag_1;
 // pub const va_list = __builtin_va_list;
 // pub const __gnuc_va_list = __builtin_va_list;
-// pub const struct_Vector2 = extern struct {
-//     x: f32 = 0,
-//     y: f32 = 0,
-//     pub const GetScreenToWorldRay = __root.GetScreenToWorldRay;
-//     pub const GetScreenToWorldRayEx = __root.GetScreenToWorldRayEx;
-//     pub const GetWorldToScreen2D = __root.GetWorldToScreen2D;
-//     pub const GetScreenToWorld2D = __root.GetScreenToWorld2D;
-//     pub const DrawPixelV = __root.DrawPixelV;
-//     pub const DrawLineV = __root.DrawLineV;
-//     pub const DrawLineEx = __root.DrawLineEx;
-//     pub const DrawLineStrip = __root.DrawLineStrip;
-//     pub const DrawLineBezier = __root.DrawLineBezier;
-//     pub const DrawCircleSector = __root.DrawCircleSector;
-//     pub const DrawCircleSectorLines = __root.DrawCircleSectorLines;
-//     pub const DrawCircleV = __root.DrawCircleV;
-//     pub const DrawCircleLinesV = __root.DrawCircleLinesV;
-//     pub const DrawRing = __root.DrawRing;
-//     pub const DrawRingLines = __root.DrawRingLines;
-//     pub const DrawRectangleV = __root.DrawRectangleV;
-//     pub const DrawTriangle = __root.DrawTriangle;
-//     pub const DrawTriangleLines = __root.DrawTriangleLines;
-//     pub const DrawTriangleFan = __root.DrawTriangleFan;
-//     pub const DrawTriangleStrip = __root.DrawTriangleStrip;
-//     pub const DrawPoly = __root.DrawPoly;
-//     pub const DrawPolyLines = __root.DrawPolyLines;
-//     pub const DrawPolyLinesEx = __root.DrawPolyLinesEx;
-//     pub const DrawSplineLinear = __root.DrawSplineLinear;
-//     pub const DrawSplineBasis = __root.DrawSplineBasis;
-//     pub const DrawSplineCatmullRom = __root.DrawSplineCatmullRom;
-//     pub const DrawSplineBezierQuadratic = __root.DrawSplineBezierQuadratic;
-//     pub const DrawSplineBezierCubic = __root.DrawSplineBezierCubic;
-//     pub const DrawSplineSegmentLinear = __root.DrawSplineSegmentLinear;
-//     pub const DrawSplineSegmentBasis = __root.DrawSplineSegmentBasis;
-//     pub const DrawSplineSegmentCatmullRom = __root.DrawSplineSegmentCatmullRom;
-//     pub const DrawSplineSegmentBezierQuadratic = __root.DrawSplineSegmentBezierQuadratic;
-//     pub const DrawSplineSegmentBezierCubic = __root.DrawSplineSegmentBezierCubic;
-//     pub const GetSplinePointLinear = __root.GetSplinePointLinear;
-//     pub const GetSplinePointBasis = __root.GetSplinePointBasis;
-//     pub const GetSplinePointCatmullRom = __root.GetSplinePointCatmullRom;
-//     pub const GetSplinePointBezierQuad = __root.GetSplinePointBezierQuad;
-//     pub const GetSplinePointBezierCubic = __root.GetSplinePointBezierCubic;
-//     pub const CheckCollisionCircles = __root.CheckCollisionCircles;
-//     pub const CheckCollisionCircleRec = __root.CheckCollisionCircleRec;
-//     pub const CheckCollisionCircleLine = __root.CheckCollisionCircleLine;
-//     pub const CheckCollisionPointRec = __root.CheckCollisionPointRec;
-//     pub const CheckCollisionPointCircle = __root.CheckCollisionPointCircle;
-//     pub const CheckCollisionPointTriangle = __root.CheckCollisionPointTriangle;
-//     pub const CheckCollisionPointLine = __root.CheckCollisionPointLine;
-//     pub const CheckCollisionPointPoly = __root.CheckCollisionPointPoly;
-//     pub const CheckCollisionLines = __root.CheckCollisionLines;
-// };
-// pub const Vector2 = struct_Vector2;
+pub const Vector2 = extern struct {
+    x: f32 = 0,
+    y: f32 = 0,
+    //     pub const GetScreenToWorldRay = __root.GetScreenToWorldRay;
+    //     pub const GetScreenToWorldRayEx = __root.GetScreenToWorldRayEx;
+    //     pub const GetWorldToScreen2D = __root.GetWorldToScreen2D;
+    //     pub const GetScreenToWorld2D = __root.GetScreenToWorld2D;
+    //     pub const DrawPixelV = __root.DrawPixelV;
+    //     pub const DrawLineV = __root.DrawLineV;
+    //     pub const DrawLineEx = __root.DrawLineEx;
+    //     pub const DrawLineStrip = __root.DrawLineStrip;
+    //     pub const DrawLineBezier = __root.DrawLineBezier;
+    //     pub const DrawCircleSector = __root.DrawCircleSector;
+    //     pub const DrawCircleSectorLines = __root.DrawCircleSectorLines;
+    //     pub const DrawCircleV = __root.DrawCircleV;
+    //     pub const DrawCircleLinesV = __root.DrawCircleLinesV;
+    //     pub const DrawRing = __root.DrawRing;
+    //     pub const DrawRingLines = __root.DrawRingLines;
+    //     pub const DrawRectangleV = __root.DrawRectangleV;
+    //     pub const DrawTriangle = __root.DrawTriangle;
+    //     pub const DrawTriangleLines = __root.DrawTriangleLines;
+    //     pub const DrawTriangleFan = __root.DrawTriangleFan;
+    //     pub const DrawTriangleStrip = __root.DrawTriangleStrip;
+    //     pub const DrawPoly = __root.DrawPoly;
+    //     pub const DrawPolyLines = __root.DrawPolyLines;
+    //     pub const DrawPolyLinesEx = __root.DrawPolyLinesEx;
+    //     pub const DrawSplineLinear = __root.DrawSplineLinear;
+    //     pub const DrawSplineBasis = __root.DrawSplineBasis;
+    //     pub const DrawSplineCatmullRom = __root.DrawSplineCatmullRom;
+    //     pub const DrawSplineBezierQuadratic = __root.DrawSplineBezierQuadratic;
+    //     pub const DrawSplineBezierCubic = __root.DrawSplineBezierCubic;
+    //     pub const DrawSplineSegmentLinear = __root.DrawSplineSegmentLinear;
+    //     pub const DrawSplineSegmentBasis = __root.DrawSplineSegmentBasis;
+    //     pub const DrawSplineSegmentCatmullRom = __root.DrawSplineSegmentCatmullRom;
+    //     pub const DrawSplineSegmentBezierQuadratic = __root.DrawSplineSegmentBezierQuadratic;
+    //     pub const DrawSplineSegmentBezierCubic = __root.DrawSplineSegmentBezierCubic;
+    //     pub const GetSplinePointLinear = __root.GetSplinePointLinear;
+    //     pub const GetSplinePointBasis = __root.GetSplinePointBasis;
+    //     pub const GetSplinePointCatmullRom = __root.GetSplinePointCatmullRom;
+    //     pub const GetSplinePointBezierQuad = __root.GetSplinePointBezierQuad;
+    //     pub const GetSplinePointBezierCubic = __root.GetSplinePointBezierCubic;
+    //     pub const CheckCollisionCircles = __root.CheckCollisionCircles;
+    //     pub const CheckCollisionCircleRec = __root.CheckCollisionCircleRec;
+    //     pub const CheckCollisionCircleLine = __root.CheckCollisionCircleLine;
+    //     pub const CheckCollisionPointRec = __root.CheckCollisionPointRec;
+    //     pub const CheckCollisionPointCircle = __root.CheckCollisionPointCircle;
+    //     pub const CheckCollisionPointTriangle = __root.CheckCollisionPointTriangle;
+    //     pub const CheckCollisionPointLine = __root.CheckCollisionPointLine;
+    //     pub const CheckCollisionPointPoly = __root.CheckCollisionPointPoly;
+    //     pub const CheckCollisionLines = __root.CheckCollisionLines;
+};
 // pub const struct_Vector3 = extern struct {
 //     x: f32 = 0,
 //     y: f32 = 0,
@@ -120,7 +119,6 @@
 // };
 // pub const Matrix = struct_Matrix;
 pub const Color = extern struct {
-    const Self = @This();
     r: u8 = 0,
     g: u8 = 0,
     b: u8 = 0,
@@ -138,49 +136,48 @@ pub const Color = extern struct {
     //     pub const ColorAlpha = __root.ColorAlpha;
     //     pub const ColorAlphaBlend = __root.ColorAlphaBlend;
     //     pub const ColorLerp = __root.ColorLerp;
-    pub const light_gray = Self{ .r = 200, .g = 200, .b = 200, .a = 255 };
-    pub const gray = Self{ .r = 130, .g = 130, .b = 130, .a = 255 };
-    pub const dark_gray = Self{ .r = 80, .g = 80, .b = 80, .a = 255 };
-    pub const yellow = Self{ .r = 253, .g = 249, .b = 0, .a = 255 };
-    pub const gold = Self{ .r = 255, .g = 203, .b = 0, .a = 255 };
-    pub const orange = Self{ .r = 255, .g = 161, .b = 0, .a = 255 };
-    pub const pink = Self{ .r = 255, .g = 109, .b = 194, .a = 255 };
-    pub const red = Self{ .r = 230, .g = 41, .b = 55, .a = 255 };
-    pub const maroon = Self{ .r = 190, .g = 33, .b = 55, .a = 255 };
-    pub const green = Self{ .r = 0, .g = 228, .b = 48, .a = 255 };
-    pub const lime = Self{ .r = 0, .g = 158, .b = 47, .a = 255 };
-    pub const dark_green = Self{ .r = 0, .g = 117, .b = 44, .a = 255 };
-    pub const skyblue = Self{ .r = 102, .g = 191, .b = 255, .a = 255 };
-    pub const blue = Self{ .r = 0, .g = 121, .b = 241, .a = 255 };
-    pub const dark_blue = Self{ .r = 0, .g = 82, .b = 172, .a = 255 };
-    pub const purple = Self{ .r = 200, .g = 122, .b = 255, .a = 255 };
-    pub const violet = Self{ .r = 135, .g = 60, .b = 190, .a = 255 };
-    pub const dark_purple = Self{ .r = 112, .g = 31, .b = 126, .a = 255 };
-    pub const beige = Self{ .r = 211, .g = 176, .b = 131, .a = 255 };
-    pub const brown = Self{ .r = 127, .g = 106, .b = 79, .a = 255 };
-    pub const dark_brown = Self{ .r = 76, .g = 63, .b = 47, .a = 255 };
-    pub const white = Self{ .r = 255, .g = 255, .b = 255, .a = 255 };
-    pub const black = Self{ .r = 0, .g = 0, .b = 0, .a = 255 };
-    pub const blank = Self{ .r = 0, .g = 0, .b = 0, .a = 0 };
-    pub const magenta = Self{ .r = 255, .g = 0, .b = 255, .a = 255 };
-    pub const ray_white = Self{ .r = 245, .g = 245, .b = 245, .a = 255 };
+    pub const light_gray = Color{ .r = 200, .g = 200, .b = 200, .a = 255 };
+    pub const gray = Color{ .r = 130, .g = 130, .b = 130, .a = 255 };
+    pub const dark_gray = Color{ .r = 80, .g = 80, .b = 80, .a = 255 };
+    pub const yellow = Color{ .r = 253, .g = 249, .b = 0, .a = 255 };
+    pub const gold = Color{ .r = 255, .g = 203, .b = 0, .a = 255 };
+    pub const orange = Color{ .r = 255, .g = 161, .b = 0, .a = 255 };
+    pub const pink = Color{ .r = 255, .g = 109, .b = 194, .a = 255 };
+    pub const red = Color{ .r = 230, .g = 41, .b = 55, .a = 255 };
+    pub const maroon = Color{ .r = 190, .g = 33, .b = 55, .a = 255 };
+    pub const green = Color{ .r = 0, .g = 228, .b = 48, .a = 255 };
+    pub const lime = Color{ .r = 0, .g = 158, .b = 47, .a = 255 };
+    pub const dark_green = Color{ .r = 0, .g = 117, .b = 44, .a = 255 };
+    pub const skyblue = Color{ .r = 102, .g = 191, .b = 255, .a = 255 };
+    pub const blue = Color{ .r = 0, .g = 121, .b = 241, .a = 255 };
+    pub const dark_blue = Color{ .r = 0, .g = 82, .b = 172, .a = 255 };
+    pub const purple = Color{ .r = 200, .g = 122, .b = 255, .a = 255 };
+    pub const violet = Color{ .r = 135, .g = 60, .b = 190, .a = 255 };
+    pub const dark_purple = Color{ .r = 112, .g = 31, .b = 126, .a = 255 };
+    pub const beige = Color{ .r = 211, .g = 176, .b = 131, .a = 255 };
+    pub const brown = Color{ .r = 127, .g = 106, .b = 79, .a = 255 };
+    pub const dark_brown = Color{ .r = 76, .g = 63, .b = 47, .a = 255 };
+    pub const white = Color{ .r = 255, .g = 255, .b = 255, .a = 255 };
+    pub const black = Color{ .r = 0, .g = 0, .b = 0, .a = 255 };
+    pub const blank = Color{ .r = 0, .g = 0, .b = 0, .a = 0 };
+    pub const magenta = Color{ .r = 255, .g = 0, .b = 255, .a = 255 };
+    pub const ray_white = Color{ .r = 245, .g = 245, .b = 245, .a = 255 };
 };
-// pub const struct_Rectangle = extern struct {
-//     x: f32 = 0,
-//     y: f32 = 0,
-//     width: f32 = 0,
-//     height: f32 = 0,
-//     pub const DrawRectangleRec = __root.DrawRectangleRec;
-//     pub const DrawRectanglePro = __root.DrawRectanglePro;
-//     pub const DrawRectangleGradientEx = __root.DrawRectangleGradientEx;
-//     pub const DrawRectangleLinesEx = __root.DrawRectangleLinesEx;
-//     pub const DrawRectangleRounded = __root.DrawRectangleRounded;
-//     pub const DrawRectangleRoundedLines = __root.DrawRectangleRoundedLines;
-//     pub const DrawRectangleRoundedLinesEx = __root.DrawRectangleRoundedLinesEx;
-//     pub const CheckCollisionRecs = __root.CheckCollisionRecs;
-//     pub const GetCollisionRec = __root.GetCollisionRec;
-// };
-// pub const Rectangle = struct_Rectangle;
+pub const Rectangle = extern struct {
+    x: f32 = 0,
+    y: f32 = 0,
+    width: f32 = 0,
+    height: f32 = 0,
+    //     pub const DrawRectangleRec = __root.DrawRectangleRec;
+    //     pub const DrawRectanglePro = __root.DrawRectanglePro;
+    //     pub const DrawRectangleGradientEx = __root.DrawRectangleGradientEx;
+    //     pub const DrawRectangleLinesEx = __root.DrawRectangleLinesEx;
+    //     pub const DrawRectangleRounded = __root.DrawRectangleRounded;
+    //     pub const DrawRectangleRoundedLines = __root.DrawRectangleRoundedLines;
+    //     pub const DrawRectangleRoundedLinesEx = __root.DrawRectangleRoundedLinesEx;
+    //     pub const CheckCollisionRecs = __root.CheckCollisionRecs;
+    //     pub const GetCollisionRec = __root.GetCollisionRec;
+};
 // pub const struct_Image = extern struct {
 //     data: ?*anyopaque = null,
 //     width: c_int = 0,
@@ -255,41 +252,42 @@ pub const Color = extern struct {
 //     pub const GenMeshCubicmap = __root.GenMeshCubicmap;
 // };
 // pub const Image = struct_Image;
-// pub const struct_Texture = extern struct {
-//     id: c_uint = 0,
-//     width: c_int = 0,
-//     height: c_int = 0,
-//     mipmaps: c_int = 0,
-//     format: c_int = 0,
-//     pub const SetShapesTexture = __root.SetShapesTexture;
-//     pub const LoadImageFromTexture = __root.LoadImageFromTexture;
-//     pub const IsTextureValid = __root.IsTextureValid;
-//     pub const UnloadTexture = __root.UnloadTexture;
-//     pub const UpdateTexture = __root.UpdateTexture;
-//     pub const UpdateTextureRec = __root.UpdateTextureRec;
-//     pub const GenTextureMipmaps = __root.GenTextureMipmaps;
-//     pub const SetTextureFilter = __root.SetTextureFilter;
-//     pub const SetTextureWrap = __root.SetTextureWrap;
-//     pub const DrawTexture = __root.DrawTexture;
-//     pub const DrawTextureV = __root.DrawTextureV;
-//     pub const DrawTextureEx = __root.DrawTextureEx;
-//     pub const DrawTextureRec = __root.DrawTextureRec;
-//     pub const DrawTexturePro = __root.DrawTexturePro;
-//     pub const DrawTextureNPatch = __root.DrawTextureNPatch;
-// };
-// pub const Texture = struct_Texture;
+pub const Texture = extern struct {
+    id: c_uint = 0,
+    width: c_int = 0,
+    height: c_int = 0,
+    mipmaps: c_int = 0,
+    format: c_int = 0,
+    //     pub const SetShapesTexture = __root.SetShapesTexture;
+    //     pub const LoadImageFromTexture = __root.LoadImageFromTexture;
+    //     pub const IsTextureValid = __root.IsTextureValid;
+    //     pub const UnloadTexture = __root.UnloadTexture;
+    //     pub const UpdateTexture = __root.UpdateTexture;
+    //     pub const UpdateTextureRec = __root.UpdateTextureRec;
+    //     pub const GenTextureMipmaps = __root.GenTextureMipmaps;
+    //     pub const SetTextureFilter = __root.SetTextureFilter;
+    //     pub const SetTextureWrap = __root.SetTextureWrap;
+    //     pub const DrawTexture = __root.DrawTexture;
+    //     pub const DrawTextureV = __root.DrawTextureV;
+    //     pub const DrawTextureEx = __root.DrawTextureEx;
+    //     pub const DrawTextureRec = __root.DrawTextureRec;
+    //     pub const DrawTexturePro = __root.DrawTexturePro;
+    //     pub const DrawTextureNPatch = __root.DrawTextureNPatch;
+};
 // pub const Texture2D = Texture;
 // pub const TextureCubemap = Texture;
-// pub const struct_RenderTexture = extern struct {
-//     id: c_uint = 0,
-//     texture: Texture = @import("std").mem.zeroes(Texture),
-//     depth: Texture = @import("std").mem.zeroes(Texture),
-//     pub const BeginTextureMode = __root.BeginTextureMode;
-//     pub const IsRenderTextureValid = __root.IsRenderTextureValid;
-//     pub const UnloadRenderTexture = __root.UnloadRenderTexture;
-// };
-// pub const RenderTexture = struct_RenderTexture;
-// pub const RenderTexture2D = RenderTexture;
+pub const RenderTexture = extern struct {
+    id: c_uint = 0,
+    texture: Texture = .{},
+    depth: Texture = .{},
+    pub const begin = BeginTextureMode;
+    pub fn end(_: RenderTexture) void {
+        EndTextureMode();
+    }
+    //     pub const IsRenderTextureValid = __root.IsRenderTextureValid;
+    pub const init = LoadRenderTexture;
+    pub const deinit = UnloadRenderTexture;
+};
 // pub const struct_NPatchInfo = extern struct {
 //     source: Rectangle = @import("std").mem.zeroes(Rectangle),
 //     left: c_int = 0,
@@ -1008,8 +1006,8 @@ pub extern fn EndDrawing() void;
 // pub extern fn EndMode2D() void;
 // pub extern fn BeginMode3D(camera: Camera3D) void;
 // pub extern fn EndMode3D() void;
-// pub extern fn BeginTextureMode(target: RenderTexture2D) void;
-// pub extern fn EndTextureMode() void;
+pub extern fn BeginTextureMode(target: RenderTexture) void;
+pub extern fn EndTextureMode() void;
 // pub extern fn BeginShaderMode(shader: Shader) void;
 // pub extern fn EndShaderMode() void;
 // pub extern fn BeginBlendMode(mode: c_int) void;
@@ -1177,7 +1175,7 @@ pub extern fn GetMouseWheelMove() f32;
 // pub extern fn DrawRingLines(center: Vector2, innerRadius: f32, outerRadius: f32, startAngle: f32, endAngle: f32, segments: c_int, color: Color) void;
 // pub extern fn DrawRectangle(posX: c_int, posY: c_int, width: c_int, height: c_int, color: Color) void;
 // pub extern fn DrawRectangleV(position: Vector2, size: Vector2, color: Color) void;
-// pub extern fn DrawRectangleRec(rec: Rectangle, color: Color) void;
+pub extern fn DrawRectangleRec(rec: Rectangle, color: Color) void;
 // pub extern fn DrawRectanglePro(rec: Rectangle, origin: Vector2, rotation: f32, color: Color) void;
 // pub extern fn DrawRectangleGradientV(posX: c_int, posY: c_int, width: c_int, height: c_int, top: Color, bottom: Color) void;
 // pub extern fn DrawRectangleGradientH(posX: c_int, posY: c_int, width: c_int, height: c_int, left: Color, right: Color) void;
@@ -1302,11 +1300,11 @@ pub extern fn GetMouseWheelMove() f32;
 // pub extern fn LoadTexture(fileName: [*c]const u8) Texture2D;
 // pub extern fn LoadTextureFromImage(image: Image) Texture2D;
 // pub extern fn LoadTextureCubemap(image: Image, layout: c_int) TextureCubemap;
-// pub extern fn LoadRenderTexture(width: c_int, height: c_int) RenderTexture2D;
+pub extern fn LoadRenderTexture(width: c_int, height: c_int) RenderTexture;
 // pub extern fn IsTextureValid(texture: Texture2D) bool;
 // pub extern fn UnloadTexture(texture: Texture2D) void;
 // pub extern fn IsRenderTextureValid(target: RenderTexture2D) bool;
-// pub extern fn UnloadRenderTexture(target: RenderTexture2D) void;
+pub extern fn UnloadRenderTexture(target: RenderTexture) void;
 // pub extern fn UpdateTexture(texture: Texture2D, pixels: ?*const anyopaque) void;
 // pub extern fn UpdateTextureRec(texture: Texture2D, rec: Rectangle, pixels: ?*const anyopaque) void;
 // pub extern fn GenTextureMipmaps(texture: [*c]Texture2D) void;
@@ -1315,7 +1313,7 @@ pub extern fn GetMouseWheelMove() f32;
 // pub extern fn DrawTexture(texture: Texture2D, posX: c_int, posY: c_int, tint: Color) void;
 // pub extern fn DrawTextureV(texture: Texture2D, position: Vector2, tint: Color) void;
 // pub extern fn DrawTextureEx(texture: Texture2D, position: Vector2, rotation: f32, scale: f32, tint: Color) void;
-// pub extern fn DrawTextureRec(texture: Texture2D, source: Rectangle, position: Vector2, tint: Color) void;
+pub extern fn DrawTextureRec(texture: Texture, source: Rectangle, position: Vector2, tint: Color) void;
 // pub extern fn DrawTexturePro(texture: Texture2D, source: Rectangle, dest: Rectangle, origin: Vector2, rotation: f32, tint: Color) void;
 // pub extern fn DrawTextureNPatch(texture: Texture2D, nPatchInfo: NPatchInfo, dest: Rectangle, origin: Vector2, rotation: f32, tint: Color) void;
 // pub extern fn ColorIsEqual(col1: Color, col2: Color) bool;
@@ -1347,7 +1345,7 @@ pub extern fn GetMouseWheelMove() f32;
 // pub extern fn UnloadFont(font: Font) void;
 // pub extern fn ExportFontAsCode(font: Font, fileName: [*c]const u8) bool;
 // pub extern fn DrawFPS(posX: c_int, posY: c_int) void;
-// pub extern fn DrawText(text: [*c]const u8, posX: c_int, posY: c_int, fontSize: c_int, color: Color) void;
+pub extern fn DrawText(text: [*:0]const u8, posX: c_int, posY: c_int, fontSize: c_int, color: Color) void;
 // pub extern fn DrawTextEx(font: Font, text: [*c]const u8, position: Vector2, fontSize: f32, spacing: f32, tint: Color) void;
 // pub extern fn DrawTextPro(font: Font, text: [*c]const u8, position: Vector2, origin: Vector2, rotation: f32, fontSize: f32, spacing: f32, tint: Color) void;
 // pub extern fn DrawTextCodepoint(font: Font, codepoint: c_int, position: Vector2, fontSize: f32, tint: Color) void;
@@ -1563,8 +1561,6 @@ pub extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 // pub const __x86_64 = @as(c_int, 1);
 // pub const __SEG_GS = @as(c_int, 1);
 // pub const __SEG_FS = @as(c_int, 1);
-// pub const __seg_gs = @compileError("unable to translate macro: undefined identifier `address_space`"); // <builtin>:32:9
-// pub const __seg_fs = @compileError("unable to translate macro: undefined identifier `address_space`"); // <builtin>:33:9
 // pub const __LAHF_SAHF__ = @as(c_int, 1);
 // pub const __AES__ = @as(c_int, 1);
 // pub const __PCLMUL__ = @as(c_int, 1);
@@ -1676,9 +1672,7 @@ pub extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 // pub const __INTPTR_TYPE__ = c_long;
 // pub const __UINTPTR_TYPE__ = c_ulong;
 // pub const __INTMAX_TYPE__ = c_long;
-// pub const __INTMAX_C_SUFFIX__ = @compileError("unable to translate macro: undefined identifier `L`"); // <builtin>:146:9
 // pub const __UINTMAX_TYPE__ = c_ulong;
-// pub const __UINTMAX_C_SUFFIX__ = @compileError("unable to translate macro: undefined identifier `UL`"); // <builtin>:148:9
 // pub const __PTRDIFF_TYPE__ = c_long;
 // pub const __SIZE_TYPE__ = c_ulong;
 // pub const __WCHAR_TYPE__ = c_int;
@@ -1699,7 +1693,6 @@ pub extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 // pub const __INT64_TYPE__ = c_long;
 // pub const __INT64_FMTd__ = "ld";
 // pub const __INT64_FMTi__ = "li";
-// pub const __INT64_C_SUFFIX__ = @compileError("unable to translate macro: undefined identifier `L`"); // <builtin>:169:9
 // pub const __UINT8_TYPE__ = u8;
 // pub const __UINT8_FMTo__ = "hho";
 // pub const __UINT8_FMTu__ = "hhu";
@@ -1721,7 +1714,6 @@ pub extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 // pub const __UINT32_FMTu__ = "u";
 // pub const __UINT32_FMTx__ = "x";
 // pub const __UINT32_FMTX__ = "X";
-// pub const __UINT32_C_SUFFIX__ = @compileError("unable to translate macro: undefined identifier `U`"); // <builtin>:191:9
 // pub const __UINT32_MAX__ = __helpers.promoteIntLiteral(c_uint, 4294967295, .decimal);
 // pub const __INT32_MAX__ = __helpers.promoteIntLiteral(c_int, 2147483647, .decimal);
 // pub const __UINT64_TYPE__ = c_ulong;
@@ -1729,7 +1721,6 @@ pub extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 // pub const __UINT64_FMTu__ = "lu";
 // pub const __UINT64_FMTx__ = "lx";
 // pub const __UINT64_FMTX__ = "lX";
-// pub const __UINT64_C_SUFFIX__ = @compileError("unable to translate macro: undefined identifier `UL`"); // <builtin>:199:9
 // pub const __UINT64_MAX__ = __helpers.promoteIntLiteral(c_ulong, 18446744073709551615, .decimal);
 // pub const __INT64_MAX__ = __helpers.promoteIntLiteral(c_long, 9223372036854775807, .decimal);
 // pub const __INT_LEAST8_TYPE__ = i8;
@@ -1881,11 +1872,6 @@ pub extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 // pub const __DECIMAL_DIG__ = __LDBL_DECIMAL_DIG__;
 // pub const RAYLIB_H = "";
 // pub const __STDC_VERSION_STDARG_H__ = @as(c_int, 0);
-// pub const va_start = @compileError("unable to translate macro: undefined identifier `__builtin_va_start`"); // /home/nue/opt/zig/lib/compiler/aro/include/stdarg.h:12:9
-// pub const va_end = @compileError("unable to translate macro: undefined identifier `__builtin_va_end`"); // /home/nue/opt/zig/lib/compiler/aro/include/stdarg.h:14:9
-// pub const va_arg = @compileError("unable to translate macro: undefined identifier `__builtin_va_arg`"); // /home/nue/opt/zig/lib/compiler/aro/include/stdarg.h:15:9
-// pub const __va_copy = @compileError("unable to translate macro: undefined identifier `__builtin_va_copy`"); // /home/nue/opt/zig/lib/compiler/aro/include/stdarg.h:18:9
-// pub const va_copy = @compileError("unable to translate macro: undefined identifier `__builtin_va_copy`"); // /home/nue/opt/zig/lib/compiler/aro/include/stdarg.h:22:9
 // pub const __GNUC_VA_LIST = @as(c_int, 1);
 // pub const RAYLIB_VERSION_MAJOR = @as(c_int, 5);
 // pub const RAYLIB_VERSION_MINOR = @as(c_int, 5);
@@ -1895,14 +1881,6 @@ pub extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 // pub const PI = @as(f32, 3.14159265358979323846);
 // pub const DEG2RAD = __helpers.div(PI, @as(f32, 180.0));
 // pub const RAD2DEG = __helpers.div(@as(f32, 180.0), PI);
-// pub const RL_MALLOC = @compileError("unable to translate macro: undefined identifier `malloc`"); // /usr/include/raylib.h:133:13
-// pub const RL_CALLOC = @compileError("unable to translate macro: undefined identifier `calloc`"); // /usr/include/raylib.h:136:13
-// pub const RL_REALLOC = @compileError("unable to translate macro: undefined identifier `realloc`"); // /usr/include/raylib.h:139:13
-// pub const RL_FREE = @compileError("unable to translate macro: undefined identifier `free`"); // /usr/include/raylib.h:142:13
-// pub inline fn CLITERAL(@"type": anytype) @TypeOf(@"type") {
-//     _ = &@"type";
-//     return @"type";
-// }
 // pub const RL_COLOR_TYPE = "";
 // pub const RL_RECTANGLE_TYPE = "";
 // pub const RL_VECTOR2_TYPE = "";
@@ -1910,36 +1888,6 @@ pub extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 // pub const RL_VECTOR4_TYPE = "";
 // pub const RL_QUATERNION_TYPE = "";
 // pub const RL_MATRIX_TYPE = "";
-// pub const LIGHTGRAY = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 200), @as(c_int, 200), @as(c_int, 200), @as(c_int, 255) });
-// pub const GRAY = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 130), @as(c_int, 130), @as(c_int, 130), @as(c_int, 255) });
-// pub const DARKGRAY = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 80), @as(c_int, 80), @as(c_int, 80), @as(c_int, 255) });
-// pub const YELLOW = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 253), @as(c_int, 249), @as(c_int, 0), @as(c_int, 255) });
-// pub const GOLD = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 255), @as(c_int, 203), @as(c_int, 0), @as(c_int, 255) });
-// pub const ORANGE = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 255), @as(c_int, 161), @as(c_int, 0), @as(c_int, 255) });
-// pub const PINK = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 255), @as(c_int, 109), @as(c_int, 194), @as(c_int, 255) });
-// pub const RED = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 230), @as(c_int, 41), @as(c_int, 55), @as(c_int, 255) });
-// pub const MAROON = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 190), @as(c_int, 33), @as(c_int, 55), @as(c_int, 255) });
-// pub const GREEN = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 0), @as(c_int, 228), @as(c_int, 48), @as(c_int, 255) });
-// pub const LIME = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 0), @as(c_int, 158), @as(c_int, 47), @as(c_int, 255) });
-// pub const DARKGREEN = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 0), @as(c_int, 117), @as(c_int, 44), @as(c_int, 255) });
-// pub const SKYBLUE = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 102), @as(c_int, 191), @as(c_int, 255), @as(c_int, 255) });
-// pub const BLUE = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 0), @as(c_int, 121), @as(c_int, 241), @as(c_int, 255) });
-// pub const DARKBLUE = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 0), @as(c_int, 82), @as(c_int, 172), @as(c_int, 255) });
-// pub const PURPLE = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 200), @as(c_int, 122), @as(c_int, 255), @as(c_int, 255) });
-// pub const VIOLET = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 135), @as(c_int, 60), @as(c_int, 190), @as(c_int, 255) });
-// pub const DARKPURPLE = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 112), @as(c_int, 31), @as(c_int, 126), @as(c_int, 255) });
-// pub const BEIGE = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 211), @as(c_int, 176), @as(c_int, 131), @as(c_int, 255) });
-// pub const BROWN = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 127), @as(c_int, 106), @as(c_int, 79), @as(c_int, 255) });
-// pub const DARKBROWN = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 76), @as(c_int, 63), @as(c_int, 47), @as(c_int, 255) });
-// pub const WHITE = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 255), @as(c_int, 255), @as(c_int, 255), @as(c_int, 255) });
-// pub const BLACK = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 0), @as(c_int, 0), @as(c_int, 0), @as(c_int, 255) });
-// pub const BLANK = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 0), @as(c_int, 0), @as(c_int, 0), @as(c_int, 0) });
-// pub const MAGENTA = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 255), @as(c_int, 0), @as(c_int, 255), @as(c_int, 255) });
-// pub const RAYWHITE = @import("std").mem.zeroInit(CLITERAL(Color), .{ @as(c_int, 245), @as(c_int, 245), @as(c_int, 245), @as(c_int, 255) });
-// pub const @"bool" = bool;
-// pub const @"true" = @as(c_int, 1);
-// pub const @"false" = @as(c_int, 0);
-// pub const __bool_true_false_are_defined = @as(c_int, 1);
 // pub const MOUSE_LEFT_BUTTON = MOUSE_BUTTON_LEFT;
 // pub const MOUSE_RIGHT_BUTTON = MOUSE_BUTTON_RIGHT;
 // pub const MOUSE_MIDDLE_BUTTON = MOUSE_BUTTON_MIDDLE;

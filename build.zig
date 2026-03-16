@@ -11,6 +11,7 @@ pub fn build(b: *std.Build) void {
     raylib.linkSystemLibrary("raylib", .{});
     const exe = b.addExecutable(.{
         .name = "umai",
+        .use_llvm = true,
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
