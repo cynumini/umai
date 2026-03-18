@@ -8,9 +8,9 @@ const assert = std.debug.assert;
 pub fn main() !void {
     var width: u32 = 1280;
     var height: u32 = 720;
-    var scroll: u32 = 0;
+    var scroll: i32 = 0;
 
-    rl.setConfigFlags(.{ .window_resizable = true });
+    rl.ConfigFlags.set(.{ .window_resizable = true });
     const window = rl.Window.init(width, height, "umai");
     defer window.deinit();
 
@@ -27,8 +27,8 @@ pub fn main() !void {
 
         // update
         if (window.isResized()) {
-            width = window.getWidth();
-            height = window.getHeight();
+            width = rl.getScreenWidth();
+            height = rl.getScreenWidth();
         }
         try ui.begin(allocator, .{
             .background = .red,
@@ -61,6 +61,5 @@ pub fn main() !void {
         rl.clearBackground(rl.Color.white);
         try ui.draw();
         rl.endDrawing();
-        // break;
     }
 }

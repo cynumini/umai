@@ -11,9 +11,6 @@ const Self = @This();
 // pub const __builtin_va_list = [1]struct___va_list_tag_1;
 // pub const va_list = __builtin_va_list;
 // pub const __gnuc_va_list = __builtin_va_list;
-pub const Vector2 = extern struct {
-    x: f32 = 0,
-    y: f32 = 0,
     //     pub const GetScreenToWorldRay = __root.GetScreenToWorldRay;
     //     pub const GetScreenToWorldRayEx = __root.GetScreenToWorldRayEx;
     //     pub const GetWorldToScreen2D = __root.GetWorldToScreen2D;
@@ -118,66 +115,6 @@ pub const Vector2 = extern struct {
 //     m15: f32 = 0,
 // };
 // pub const Matrix = struct_Matrix;
-pub const Color = extern struct {
-    r: u8 = 0,
-    g: u8 = 0,
-    b: u8 = 0,
-    a: u8 = 0,
-    //     pub const UnloadImageColors = __root.UnloadImageColors;
-    //     pub const UnloadImagePalette = __root.UnloadImagePalette;
-    //     pub const ColorIsEqual = __root.ColorIsEqual;
-    //     pub const Fade = __root.Fade;
-    //     pub const ColorToInt = __root.ColorToInt;
-    //     pub const ColorNormalize = __root.ColorNormalize;
-    //     pub const ColorToHSV = __root.ColorToHSV;
-    //     pub const ColorTint = __root.ColorTint;
-    //     pub const ColorBrightness = __root.ColorBrightness;
-    //     pub const ColorContrast = __root.ColorContrast;
-    //     pub const ColorAlpha = __root.ColorAlpha;
-    //     pub const ColorAlphaBlend = __root.ColorAlphaBlend;
-    //     pub const ColorLerp = __root.ColorLerp;
-    pub const light_gray = Color{ .r = 200, .g = 200, .b = 200, .a = 255 };
-    pub const gray = Color{ .r = 130, .g = 130, .b = 130, .a = 255 };
-    pub const dark_gray = Color{ .r = 80, .g = 80, .b = 80, .a = 255 };
-    pub const yellow = Color{ .r = 253, .g = 249, .b = 0, .a = 255 };
-    pub const gold = Color{ .r = 255, .g = 203, .b = 0, .a = 255 };
-    pub const orange = Color{ .r = 255, .g = 161, .b = 0, .a = 255 };
-    pub const pink = Color{ .r = 255, .g = 109, .b = 194, .a = 255 };
-    pub const red = Color{ .r = 230, .g = 41, .b = 55, .a = 255 };
-    pub const maroon = Color{ .r = 190, .g = 33, .b = 55, .a = 255 };
-    pub const green = Color{ .r = 0, .g = 228, .b = 48, .a = 255 };
-    pub const lime = Color{ .r = 0, .g = 158, .b = 47, .a = 255 };
-    pub const dark_green = Color{ .r = 0, .g = 117, .b = 44, .a = 255 };
-    pub const skyblue = Color{ .r = 102, .g = 191, .b = 255, .a = 255 };
-    pub const blue = Color{ .r = 0, .g = 121, .b = 241, .a = 255 };
-    pub const dark_blue = Color{ .r = 0, .g = 82, .b = 172, .a = 255 };
-    pub const purple = Color{ .r = 200, .g = 122, .b = 255, .a = 255 };
-    pub const violet = Color{ .r = 135, .g = 60, .b = 190, .a = 255 };
-    pub const dark_purple = Color{ .r = 112, .g = 31, .b = 126, .a = 255 };
-    pub const beige = Color{ .r = 211, .g = 176, .b = 131, .a = 255 };
-    pub const brown = Color{ .r = 127, .g = 106, .b = 79, .a = 255 };
-    pub const dark_brown = Color{ .r = 76, .g = 63, .b = 47, .a = 255 };
-    pub const white = Color{ .r = 255, .g = 255, .b = 255, .a = 255 };
-    pub const black = Color{ .r = 0, .g = 0, .b = 0, .a = 255 };
-    pub const blank = Color{ .r = 0, .g = 0, .b = 0, .a = 0 };
-    pub const magenta = Color{ .r = 255, .g = 0, .b = 255, .a = 255 };
-    pub const ray_white = Color{ .r = 245, .g = 245, .b = 245, .a = 255 };
-};
-pub const Rectangle = extern struct {
-    x: f32 = 0,
-    y: f32 = 0,
-    width: f32 = 0,
-    height: f32 = 0,
-    //     pub const DrawRectangleRec = __root.DrawRectangleRec;
-    //     pub const DrawRectanglePro = __root.DrawRectanglePro;
-    //     pub const DrawRectangleGradientEx = __root.DrawRectangleGradientEx;
-    //     pub const DrawRectangleLinesEx = __root.DrawRectangleLinesEx;
-    //     pub const DrawRectangleRounded = __root.DrawRectangleRounded;
-    //     pub const DrawRectangleRoundedLines = __root.DrawRectangleRoundedLines;
-    //     pub const DrawRectangleRoundedLinesEx = __root.DrawRectangleRoundedLinesEx;
-    //     pub const CheckCollisionRecs = __root.CheckCollisionRecs;
-    //     pub const GetCollisionRec = __root.GetCollisionRec;
-};
 // pub const struct_Image = extern struct {
 //     data: ?*anyopaque = null,
 //     width: c_int = 0,
@@ -252,12 +189,6 @@ pub const Rectangle = extern struct {
 //     pub const GenMeshCubicmap = __root.GenMeshCubicmap;
 // };
 // pub const Image = struct_Image;
-pub const Texture = extern struct {
-    id: c_uint = 0,
-    width: c_int = 0,
-    height: c_int = 0,
-    mipmaps: c_int = 0,
-    format: c_int = 0,
     //     pub const SetShapesTexture = __root.SetShapesTexture;
     //     pub const LoadImageFromTexture = __root.LoadImageFromTexture;
     //     pub const IsTextureValid = __root.IsTextureValid;
@@ -276,18 +207,6 @@ pub const Texture = extern struct {
 };
 // pub const Texture2D = Texture;
 // pub const TextureCubemap = Texture;
-pub const RenderTexture = extern struct {
-    id: c_uint = 0,
-    texture: Texture = .{},
-    depth: Texture = .{},
-    pub const begin = BeginTextureMode;
-    pub fn end(_: RenderTexture) void {
-        EndTextureMode();
-    }
-    //     pub const IsRenderTextureValid = __root.IsRenderTextureValid;
-    pub const init = LoadRenderTexture;
-    pub const deinit = UnloadRenderTexture;
-};
 // pub const struct_NPatchInfo = extern struct {
 //     source: Rectangle = @import("std").mem.zeroes(Rectangle),
 //     left: c_int = 0,
@@ -973,8 +892,6 @@ pub extern fn IsWindowResized() bool;
 // pub extern fn SetWindowOpacity(opacity: f32) void;
 // pub extern fn SetWindowFocused() void;
 // pub extern fn GetWindowHandle() ?*anyopaque;
-pub extern fn GetScreenWidth() c_int;
-pub extern fn GetScreenHeight() c_int;
 // pub extern fn GetRenderWidth() c_int;
 // pub extern fn GetRenderHeight() c_int;
 // pub extern fn GetMonitorCount() c_int;
@@ -999,15 +916,10 @@ pub extern fn GetScreenHeight() c_int;
 // pub extern fn EnableCursor() void;
 // pub extern fn DisableCursor() void;
 // pub extern fn IsCursorOnScreen() bool;
-pub extern fn ClearBackground(color: Color) void;
-pub extern fn BeginDrawing() void;
-pub extern fn EndDrawing() void;
 // pub extern fn BeginMode2D(camera: Camera2D) void;
 // pub extern fn EndMode2D() void;
 // pub extern fn BeginMode3D(camera: Camera3D) void;
 // pub extern fn EndMode3D() void;
-pub extern fn BeginTextureMode(target: RenderTexture) void;
-pub extern fn EndTextureMode() void;
 // pub extern fn BeginShaderMode(shader: Shader) void;
 // pub extern fn EndShaderMode() void;
 // pub extern fn BeginBlendMode(mode: c_int) void;
@@ -1048,7 +960,6 @@ pub extern fn EndTextureMode() void;
 // pub extern fn LoadRandomSequence(count: c_uint, min: c_int, max: c_int) [*c]c_int;
 // pub extern fn UnloadRandomSequence(sequence: [*c]c_int) void;
 // pub extern fn TakeScreenshot(fileName: [*c]const u8) void;
-pub extern fn SetConfigFlags(flags: c_uint) void;
 // pub extern fn OpenURL(url: [*c]const u8) void;
 // pub extern fn TraceLog(logLevel: c_int, text: [*c]const u8, ...) void;
 // pub extern fn SetTraceLogLevel(logLevel: c_int) void;
@@ -1107,7 +1018,7 @@ pub extern fn SetConfigFlags(flags: c_uint) void;
 // pub extern fn IsKeyPressed(key: c_int) bool;
 // pub extern fn IsKeyPressedRepeat(key: c_int) bool;
 // pub extern fn IsKeyDown(key: c_int) bool;
-// pub extern fn IsKeyReleased(key: c_int) bool;
+pub extern fn IsKeyReleased(key: c_int) bool;
 // pub extern fn IsKeyUp(key: c_int) bool;
 // pub extern fn GetKeyPressed() c_int;
 // pub extern fn GetCharPressed() c_int;
@@ -1134,7 +1045,6 @@ pub extern fn SetConfigFlags(flags: c_uint) void;
 // pub extern fn SetMousePosition(x: c_int, y: c_int) void;
 // pub extern fn SetMouseOffset(offsetX: c_int, offsetY: c_int) void;
 // pub extern fn SetMouseScale(scaleX: f32, scaleY: f32) void;
-pub extern fn GetMouseWheelMove() f32;
 // pub extern fn GetMouseWheelMoveV() Vector2;
 // pub extern fn SetMouseCursor(cursor: c_int) void;
 // pub extern fn GetTouchX() c_int;
@@ -1313,7 +1223,6 @@ pub extern fn UnloadRenderTexture(target: RenderTexture) void;
 // pub extern fn DrawTexture(texture: Texture2D, posX: c_int, posY: c_int, tint: Color) void;
 // pub extern fn DrawTextureV(texture: Texture2D, position: Vector2, tint: Color) void;
 // pub extern fn DrawTextureEx(texture: Texture2D, position: Vector2, rotation: f32, scale: f32, tint: Color) void;
-pub extern fn DrawTextureRec(texture: Texture, source: Rectangle, position: Vector2, tint: Color) void;
 // pub extern fn DrawTexturePro(texture: Texture2D, source: Rectangle, dest: Rectangle, origin: Vector2, rotation: f32, tint: Color) void;
 // pub extern fn DrawTextureNPatch(texture: Texture2D, nPatchInfo: NPatchInfo, dest: Rectangle, origin: Vector2, rotation: f32, tint: Color) void;
 // pub extern fn ColorIsEqual(col1: Color, col2: Color) bool;
@@ -1345,13 +1254,11 @@ pub extern fn DrawTextureRec(texture: Texture, source: Rectangle, position: Vect
 // pub extern fn UnloadFont(font: Font) void;
 // pub extern fn ExportFontAsCode(font: Font, fileName: [*c]const u8) bool;
 // pub extern fn DrawFPS(posX: c_int, posY: c_int) void;
-pub extern fn DrawText(text: [*:0]const u8, posX: c_int, posY: c_int, fontSize: c_int, color: Color) void;
 // pub extern fn DrawTextEx(font: Font, text: [*c]const u8, position: Vector2, fontSize: f32, spacing: f32, tint: Color) void;
 // pub extern fn DrawTextPro(font: Font, text: [*c]const u8, position: Vector2, origin: Vector2, rotation: f32, fontSize: f32, spacing: f32, tint: Color) void;
 // pub extern fn DrawTextCodepoint(font: Font, codepoint: c_int, position: Vector2, fontSize: f32, tint: Color) void;
 // pub extern fn DrawTextCodepoints(font: Font, codepoints: [*c]const c_int, codepointCount: c_int, position: Vector2, fontSize: f32, spacing: f32, tint: Color) void;
 // pub extern fn SetTextLineSpacing(spacing: c_int) void;
-pub extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 // pub extern fn MeasureTextEx(font: Font, text: [*c]const u8, fontSize: f32, spacing: f32) Vector2;
 // pub extern fn GetGlyphIndex(font: Font, codepoint: c_int) c_int;
 // pub extern fn GetGlyphInfo(font: Font, codepoint: c_int) GlyphInfo;

@@ -1,5 +1,5 @@
 const std = @import("std");
-const lossyCast = std.math.lossyCast;
+const cast = std.math.lossyCast;
 
 const rl = @import("raylib");
 
@@ -35,7 +35,7 @@ const Container = struct {
 };
 
 const ScrollView = struct {
-    scroll: *u32,
+    scroll: *i32,
     child: ?usize,
     viewport: *rl.RenderTexture,
 };
@@ -185,8 +185,7 @@ fn fitWidth(self: *Self, root: *Node) !void {
         .label => |l| if (l.wrap) {
             unreachable;
         } else {
-            const a = lossyCast(f32, rl.measureText(l.text, l.font_size)) + own_width;
-            break :blk a;
+            break :blk cast(f32, rl.measureText(l.text, l.font_size)) + own_width;
         },
         .container => |c| {
             for (c.children.items) |id| {
@@ -198,7 +197,7 @@ fn fitWidth(self: *Self, root: *Node) !void {
                 .left_to_right => {
                     var width = own_width;
                     if (c.children.items.len > 0) {
-                        width += lossyCast(f32, (c.children.items.len - 1) * c.child_gap);
+                        width += cast(f32, (c.children.items.len - 1) * c.child_gap);
                     }
                     for (c.children.items) |id| {
                         const child = try self.getNode(.{ .id = id });
@@ -223,7 +222,7 @@ fn fitHeight(self: *Self, root: *Node) !void {
         .label => |l| if (l.wrap) {
             unreachable;
         } else {
-            break :blk lossyCast(f32, l.font_size) + own_height;
+            break :blk cast(f32, l.font_size) + own_height;
         },
         .container => |c| {
             for (c.children.items) |id| {
@@ -235,7 +234,7 @@ fn fitHeight(self: *Self, root: *Node) !void {
                 .top_to_bottom => {
                     var height = own_height;
                     if (c.children.items.len > 0) {
-                        height += lossyCast(f32, (c.children.items.len - 1) * c.child_gap);
+                        height += cast(f32, (c.children.items.len - 1) * c.child_gap);
                     }
                     for (c.children.items) |id| {
                         const child = try self.getNode(.{ .id = id });
@@ -246,7 +245,8 @@ fn fitHeight(self: *Self, root: *Node) !void {
                 .left_to_right => break :blk try self.fitGeneric(c.children, own_height, "height"),
             }
         },
-        .scroll_view => {
+        .scroll_view => |cv| {
+            if (cv.child) |child_id| try self.fitHeight(try self.getNode(.{ .id = child_id }));
             if (root.sizes) |sizes| if (sizes.height == .fixed) break :blk @floatFromInt(sizes.height.fixed);
             break :blk own_height;
         },
@@ -263,7 +263,7 @@ fn growWidth(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
     switch (container.direction) {
         .left_to_right => {
             if (container.children.items.len > 0) {
-                remaining_width -= lossyCast(f32, container.child_gap * (container.children.items.len - 1));
+                remaining_width -= cast(f32, container.child_gap * (container.children.items.len - 1));
             }
             for (container.children.items) |id| {
                 const child = try self.getNode(.{ .id = id });
@@ -285,7 +285,7 @@ fn growWidth(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
                         width_to_add = second_smallest - smallest;
                     }
                 }
-                width_to_add = @min(width_to_add, remaining_width / lossyCast(f32, growable.items.len));
+                width_to_add = @min(width_to_add, remaining_width / cast(f32, growable.items.len));
                 if (width_to_add == 0) break;
                 for (growable.items) |child| {
                     if (child.rectangle.width == smallest) {
@@ -320,7 +320,7 @@ fn growHeight(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
     switch (container.direction) {
         .top_to_bottom => {
             if (container.children.items.len > 0) {
-                remaining_height -= lossyCast(f32, container.child_gap * (container.children.items.len - 1));
+                remaining_height -= cast(f32, container.child_gap * (container.children.items.len - 1));
             }
             for (container.children.items) |id| {
                 const child = try self.getNode(.{ .id = id });
@@ -342,7 +342,7 @@ fn growHeight(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
                         height_to_add = second_smallest - smallest;
                     }
                 }
-                height_to_add = @min(height_to_add, remaining_height / lossyCast(f32, growable.items.len));
+                height_to_add = @min(height_to_add, remaining_height / cast(f32, growable.items.len));
                 if (height_to_add == 0) break;
                 for (growable.items) |child| {
                     if (child.rectangle.height == smallest) {
@@ -368,8 +368,8 @@ fn growHeight(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
 }
 
 fn position(self: *Self, root: *Node) !void {
-    var left_offset = root.rectangle.x + lossyCast(f32, root.paddings.right + root.border_size);
-    var top_offset = root.rectangle.y + lossyCast(f32, root.paddings.top + root.border_size);
+    var left_offset = root.rectangle.x + cast(f32, root.paddings.right + root.border_size);
+    var top_offset = root.rectangle.y + cast(f32, root.paddings.top + root.border_size);
 
     var remaining_width = root.rectangle.width;
     var remaining_height = root.rectangle.width;
@@ -379,7 +379,7 @@ fn position(self: *Self, root: *Node) !void {
             break :blk &root.type.container;
         } else if (root.type == .scroll_view) {
             if (root.type.scroll_view.child) |id| {
-                var child = try self.getNode(.{ .id =  id});
+                var child = try self.getNode(.{ .id = id });
                 if (child.type == .container) try self.position(child);
             }
             return;
@@ -397,7 +397,7 @@ fn position(self: *Self, root: *Node) !void {
     switch (container.direction) {
         .left_to_right => {
             if (container.children.items.len > 0) {
-                remaining_width -= lossyCast(f32, (container.children.items.len - 1) * container.child_gap);
+                remaining_width -= cast(f32, (container.children.items.len - 1) * container.child_gap);
             }
             if (container.alignment == .center) {
                 left_offset += remaining_width / 2;
@@ -412,13 +412,12 @@ fn position(self: *Self, root: *Node) !void {
                 }
                 child.rectangle.x = child_position.x;
                 child.rectangle.y = child_position.y;
-                left_offset += child.rectangle.width + lossyCast(f32, container.child_gap);
+                left_offset += child.rectangle.width + cast(f32, container.child_gap);
             }
         },
         .top_to_bottom => {
-            @breakpoint();
             if (container.children.items.len > 0) {
-                remaining_height -= lossyCast(f32, (container.children.items.len - 1) * container.child_gap);
+                remaining_height -= cast(f32, (container.children.items.len - 1) * container.child_gap);
             }
             if (container.alignment == .center) {
                 top_offset += remaining_height / 2;
@@ -434,7 +433,7 @@ fn position(self: *Self, root: *Node) !void {
                 child_position.y += top_offset;
                 child.rectangle.x = child_position.x;
                 child.rectangle.y = child_position.y;
-                top_offset += child.rectangle.height + lossyCast(f32, container.child_gap);
+                top_offset += child.rectangle.height + cast(f32, container.child_gap);
             }
         },
     }
@@ -468,12 +467,16 @@ pub fn end(self: *Self, allocator: std.mem.Allocator) !void {
                     sv.viewport.* = rl.RenderTexture.init(width, height);
                 }
                 var temp: rl.Vector2 = .{ .x = root.rectangle.x, .y = root.rectangle.y };
-                sv.scroll.* = @min(sv.scroll.*, 0);
-                sv.scroll.* = @max(sv.scroll.*, lossyCast(u32, -root.rectangle.height + child.rectangle.height));
+                sv.scroll.* = std.math.clamp(
+                    sv.scroll.*,
+                    0,
+                    cast(i32, root.rectangle.height - child.rectangle.height),
+                );
                 root.rectangle.x = 0;
-                root.rectangle.y = @floatFromInt(sv.scroll.*);
+                root.rectangle.y = -cast(f32, sv.scroll.*);
                 sv.viewport.begin();
                 rl.clearBackground(.white);
+                try self.position(root_root);
                 try self.drawNode(root);
                 sv.viewport.end();
                 root.rectangle.x = temp.x;
@@ -494,9 +497,9 @@ const ScrollViewOptions = struct {
     foreground: ?rl.Color = null,
 };
 
-pub fn scrollViewBegin(self: *Self, allocator: std.mem.Allocator, scroll: *u32, viewport: *rl.RenderTexture, options: ScrollViewOptions) !void {
-    const wheel_move: i32 = @intFromFloat(rl.getMouseWheelMove() * 80);
-    scroll.* = @intCast(@max(0, lossyCast(i32, scroll.*) + wheel_move));
+// TODO: add scroll slider
+pub fn scrollViewBegin(self: *Self, allocator: std.mem.Allocator, scroll: *i32, viewport: *rl.RenderTexture, options: ScrollViewOptions) !void {
+    scroll.* -= @intFromFloat(rl.getMouseWheelMove() * 80);
     self.current_container = try self.addNode(allocator, .{
         .type = .{ .scroll_view = .{ .scroll = scroll, .child = null, .viewport = viewport } },
         .paddings = options.paddings orelse style.paddings,
@@ -544,11 +547,12 @@ pub fn labelFmt(self: *Self, allocator: std.mem.Allocator, comptime fmt: []const
     try label(self, allocator, try std.fmt.allocPrintSentinel(allocator, fmt, args, 0), options);
 }
 
+// TODO: discard out of screen
 pub fn drawNode(self: *Self, root: *Node) !void {
     switch (root.type) {
         .container => |c| {
             if (root.background) |b| {
-                rl.drawRectangleRec(root.rectangle, b);
+                root.rectangle.draw(b);
             }
             for (c.children.items) |id| {
                 const child = try self.getNode(.{ .id = id });
@@ -556,12 +560,20 @@ pub fn drawNode(self: *Self, root: *Node) !void {
             }
         },
         .label => |l| {
-            rl.drawText(l.text, @intFromFloat(root.rectangle.x), @intFromFloat(root.rectangle.y), @intCast(l.font_size), root.foreground.?);
+            const offest: rl.Vector2 = .{
+                .x = root.rectangle.x + cast(f32, root.paddings.left),
+                .y = root.rectangle.y + cast(f32, root.paddings.top),
+            };
+            rl.drawText(l.text, @intFromFloat(offest.x), @intFromFloat(offest.y), @intCast(l.font_size), root.foreground.?);
         },
         .scroll_view => |sv| {
-            const diff: f32 = lossyCast(f32, sv.viewport.texture.height) - root.rectangle.height;
+            const diff: f32 = cast(f32, sv.viewport.texture.height) - root.rectangle.height;
             // f32 height = -command->rect.height;
-            rl.drawTextureRec(sv.viewport.texture, .{ .x = 0, .y = diff, .width = root.rectangle.width, .height = -root.rectangle.height }, .{ .x = root.rectangle.x, .y = root.rectangle.y }, .white);
+            sv.viewport.texture.drawRec(
+                .{ .x = 0, .y = diff, .width = root.rectangle.width, .height = -root.rectangle.height },
+                .{ .x = root.rectangle.x, .y = root.rectangle.y },
+                .white,
+            );
         },
     }
 }
