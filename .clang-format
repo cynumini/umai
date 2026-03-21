@@ -1,0 +1,3 @@
+BasedOnStyle: Microsoft
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: WithoutElse
