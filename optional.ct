@@ -1,0 +1,15 @@
+/// u32,Color,Paddings
+#include <raylib.h>
+
+#include "sakana.h"
+#include "paddings.h"
+/// h
+typedef struct
+{
+    bool has_value;
+    $t$ value;
+} $n$Optional;
+
+$n$Optional $l$_optional_create($t$ value);
+/// c
+$n$Optional $l$_optional_create($t$ value) { return ($n$Optional){.has_value = true, .value = value}; }
