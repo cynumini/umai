@@ -1,1 +1,3 @@
-umai
+.zig-cache/
+zig-out/
+*.o

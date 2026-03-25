@@ -379,7 +379,7 @@ fn position(self: *Self, root: *Node) !void {
             break :blk &root.type.container;
         } else if (root.type == .scroll_view) {
             if (root.type.scroll_view.child) |id| {
-                var child = try self.getNode(.{ .id = id });
+                const child = try self.getNode(.{ .id = id });
                 if (child.type == .container) try self.position(child);
             }
             return;
@@ -466,7 +466,7 @@ pub fn end(self: *Self, allocator: std.mem.Allocator) !void {
                     sv.viewport.deinit();
                     sv.viewport.* = rl.RenderTexture.init(width, height);
                 }
-                var temp: rl.Vector2 = .{ .x = root.rectangle.x, .y = root.rectangle.y };
+                const temp: rl.Vector2 = .{ .x = root.rectangle.x, .y = root.rectangle.y };
                 sv.scroll.* = std.math.clamp(
                     sv.scroll.*,
                     0,
