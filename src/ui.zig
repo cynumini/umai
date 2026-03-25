@@ -1,29 +1,12 @@
 const std = @import("std");
-const cast = std.math.lossyCast;
-
 const rl = @import("raylib");
+
+const cast = std.math.lossyCast;
 
 const Self = @This();
 
-const UIError = error{
-    RootNodeMissing,
-};
-
-const NodeID = union(enum) { root: void, id: usize };
-
-current_container: NodeID,
-current: NodeID,
-nodes: std.ArrayList(Node),
-root: ?Node,
-
-pub fn init() Self {
-    return .{
-        .current_container = .root,
-        .current = .root,
-        .nodes = .empty,
-        .root = null,
-    };
-}
+current_container: ?usize = null,
+nodes: std.ArrayList(Node) = .empty,
 
 const Container = struct {
     const Direction = enum { left_to_right, top_to_bottom };
@@ -73,9 +56,10 @@ const Node = struct {
         height: Size,
     };
 
+    id: []const u8 = "",
     sizes: ?Sizes,
     type: Type,
-    parent: NodeID,
+    parent: ?usize = null,
     paddings: Sides,
     border_size: u32,
     background: ?rl.Color,
@@ -111,35 +95,27 @@ const RootContainerOptions = struct {
     border_size: ?u32 = null,
 };
 
-fn getNode(self: *Self, node_id: NodeID) !*Node {
-    switch (node_id) {
-        .root => if (self.root) |*node| return node else return UIError.RootNodeMissing,
-        .id => |index| return &self.nodes.items[index],
-    }
+fn getNode(self: *Self, node_id: usize) *Node {
+    return &self.nodes.items[node_id];
 }
 
-fn addNode(self: *Self, allocator: std.mem.Allocator, node: Node) !NodeID {
-    switch (self.current) {
-        .root => {
-            self.root = node;
-            self.current = .{ .id = 0 };
-            return .root;
-        },
-        .id => |index| {
-            try self.nodes.append(allocator, node);
-            var container = try self.getNode(self.current_container);
-            switch (container.type) {
-                .container => |*value| try value.children.append(allocator, index),
-                .scroll_view => |*value| value.child = index,
-                else => unreachable,
-            }
-            self.current.id += 1;
-            return .{ .id = index };
-        },
+fn addNode(self: *Self, allocator: std.mem.Allocator, node: Node) !usize {
+    try self.nodes.append(allocator, node);
+    const id = self.nodes.items.len - 1;
+    self.getNode(id).parent = self.current_container;
+    if (self.current_container) |current_container| {
+        var container = self.getNode(current_container);
+        switch (container.type) {
+            .container => |*value| try value.children.append(allocator, id),
+            .scroll_view => |*value| value.child = id,
+            else => unreachable,
+        }
     }
+    return id;
 }
 
 const ContainerOptions = struct {
+    id: []const u8 = "",
     direction: Container.Direction = .left_to_right,
     alignment: Container.Alignment = .left_top,
     paddings: ?Node.Sides = null,
@@ -153,6 +129,7 @@ const ContainerOptions = struct {
 
 pub fn begin(self: *Self, allocator: std.mem.Allocator, options: ContainerOptions) !void {
     self.current_container = try self.addNode(allocator, .{
+        .id = options.id,
         .type = .{ .container = .{
             .direction = options.direction,
             .alignment = options.alignment,
@@ -166,14 +143,13 @@ pub fn begin(self: *Self, allocator: std.mem.Allocator, options: ContainerOption
         },
         .background = options.background orelse style.background,
         .foreground = options.foreground orelse style.foreground,
-        .parent = self.current_container,
     });
 }
 
 fn fitGeneric(self: *Self, children: std.ArrayList(usize), own_size: f32, comptime size_name: []const u8) !f32 {
     var size: f32 = 0;
     for (children.items) |id| {
-        const child = try self.getNode(.{ .id = id });
+        const child = self.getNode(id);
         size = @max(size, @field(child.rectangle, size_name));
     }
     return own_size + size;
@@ -189,7 +165,7 @@ fn fitWidth(self: *Self, root: *Node) !void {
         },
         .container => |c| {
             for (c.children.items) |id| {
-                const child = try self.getNode(.{ .id = id });
+                const child = self.getNode(id);
                 try self.fitWidth(child);
             }
             if (root.sizes) |sizes| if (sizes.width == .fixed) break :blk @floatFromInt(sizes.width.fixed);
@@ -200,7 +176,7 @@ fn fitWidth(self: *Self, root: *Node) !void {
                         width += cast(f32, (c.children.items.len - 1) * c.child_gap);
                     }
                     for (c.children.items) |id| {
-                        const child = try self.getNode(.{ .id = id });
+                        const child = self.getNode(id);
                         width += child.rectangle.width;
                     }
                     break :blk width;
@@ -226,7 +202,7 @@ fn fitHeight(self: *Self, root: *Node) !void {
         },
         .container => |c| {
             for (c.children.items) |id| {
-                const child = try self.getNode(.{ .id = id });
+                const child = self.getNode(id);
                 try self.fitHeight(child);
             }
             if (root.sizes) |sizes| if (sizes.height == .fixed) break :blk @floatFromInt(sizes.height.fixed);
@@ -237,7 +213,7 @@ fn fitHeight(self: *Self, root: *Node) !void {
                         height += cast(f32, (c.children.items.len - 1) * c.child_gap);
                     }
                     for (c.children.items) |id| {
-                        const child = try self.getNode(.{ .id = id });
+                        const child = self.getNode(id);
                         height += child.rectangle.height;
                     }
                     break :blk height;
@@ -246,7 +222,7 @@ fn fitHeight(self: *Self, root: *Node) !void {
             }
         },
         .scroll_view => |cv| {
-            if (cv.child) |child_id| try self.fitHeight(try self.getNode(.{ .id = child_id }));
+            if (cv.child) |child_id| try self.fitHeight(self.getNode(child_id));
             if (root.sizes) |sizes| if (sizes.height == .fixed) break :blk @floatFromInt(sizes.height.fixed);
             break :blk own_height;
         },
@@ -266,7 +242,7 @@ fn growWidth(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
                 remaining_width -= cast(f32, container.child_gap * (container.children.items.len - 1));
             }
             for (container.children.items) |id| {
-                const child = try self.getNode(.{ .id = id });
+                const child = self.getNode(id);
                 remaining_width -= child.rectangle.width;
                 if (child.sizes) |sizes| if (sizes.width == .grow) try growable.append(allocator, child);
             }
@@ -297,7 +273,7 @@ fn growWidth(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
         },
         .top_to_bottom => {
             for (container.children.items) |id| {
-                const child = try self.getNode(.{ .id = id });
+                const child = self.getNode(id);
                 if (child.sizes) |sizes| {
                     if (sizes.width == .grow) child.rectangle.width = @max(remaining_width, child.rectangle.width);
                 }
@@ -305,7 +281,7 @@ fn growWidth(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
         },
     }
     for (container.children.items) |id| {
-        const child = try self.getNode(.{ .id = id });
+        const child = self.getNode(id);
         if (child.type == .container) try self.growWidth(allocator, child);
     }
 }
@@ -323,7 +299,7 @@ fn growHeight(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
                 remaining_height -= cast(f32, container.child_gap * (container.children.items.len - 1));
             }
             for (container.children.items) |id| {
-                const child = try self.getNode(.{ .id = id });
+                const child = self.getNode(id);
                 remaining_height -= child.rectangle.height;
                 if (child.sizes) |sizes| if (sizes.height == .grow) try growable.append(allocator, child);
             }
@@ -354,15 +330,16 @@ fn growHeight(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
         },
         .left_to_right => {
             for (container.children.items) |id| {
-                const child = try self.getNode(.{ .id = id });
+                const child = self.getNode(id);
                 if (child.sizes) |sizes| {
-                    if (sizes.height == .grow) child.rectangle.height = @max(remaining_height, child.rectangle.height);
+                    if (sizes.height == .grow)
+                        child.rectangle.height = @max(remaining_height, child.rectangle.height);
                 }
             }
         },
     }
     for (container.children.items) |id| {
-        const child = try self.getNode(.{ .id = id });
+        const child = self.getNode(id);
         if (child.type == .container) try self.growHeight(allocator, child);
     }
 }
@@ -372,14 +349,14 @@ fn position(self: *Self, root: *Node) !void {
     var top_offset = root.rectangle.y + cast(f32, root.paddings.top + root.border_size);
 
     var remaining_width = root.rectangle.width;
-    var remaining_height = root.rectangle.width;
+    var remaining_height = root.rectangle.height;
 
     const container = blk: {
         if (root.type == .container) {
             break :blk &root.type.container;
         } else if (root.type == .scroll_view) {
             if (root.type.scroll_view.child) |id| {
-                const child = try self.getNode(.{ .id = id });
+                const child = self.getNode(id);
                 if (child.type == .container) try self.position(child);
             }
             return;
@@ -389,7 +366,7 @@ fn position(self: *Self, root: *Node) !void {
     };
 
     for (container.children.items) |id| {
-        const child = try self.getNode(.{ .id = id });
+        const child = self.getNode(id);
         remaining_width -= child.rectangle.width;
         remaining_height -= child.rectangle.height;
     }
@@ -403,7 +380,7 @@ fn position(self: *Self, root: *Node) !void {
                 left_offset += remaining_width / 2;
             }
             for (container.children.items) |id| {
-                const child = try self.getNode(.{ .id = id });
+                const child = self.getNode(id);
                 var child_position: rl.Vector2 = .{};
                 child_position.x += left_offset;
                 child_position.y = top_offset;
@@ -423,7 +400,7 @@ fn position(self: *Self, root: *Node) !void {
                 top_offset += remaining_height / 2;
             }
             for (container.children.items) |id| {
-                const child = try self.getNode(.{ .id = id });
+                const child = self.getNode(id);
                 var child_position: rl.Vector2 = .{};
                 if (container.alignment == .center) {
                     child_position.x += (root.rectangle.width - child.rectangle.width) / 2;
@@ -439,14 +416,15 @@ fn position(self: *Self, root: *Node) !void {
     }
 
     for (container.children.items) |id| {
-        const child = try self.getNode(.{ .id = id });
+        const child = self.getNode(id);
         if (child.type == .container or child.type == .scroll_view) try self.position(child);
     }
 }
 
 pub fn end(self: *Self, allocator: std.mem.Allocator) !void {
-    if (self.current_container == .root) {
-        const root_root = try self.getNode(self.current_container);
+    const node = self.getNode(self.current_container.?);
+    if (node.parent == null) {
+        const root_root = node;
         try self.fitWidth(root_root);
         try self.growWidth(allocator, root_root);
         // Wrap text
@@ -456,10 +434,10 @@ pub fn end(self: *Self, allocator: std.mem.Allocator) !void {
 
         var i: usize = self.nodes.items.len;
         while (i > 0) : (i -= 1) {
-            const child = try self.getNode(.{ .id = i - 1 });
+            const child = self.getNode(i - 1);
             if (child.type == .scroll_view) {
                 var sv = child.type.scroll_view;
-                const root = try self.getNode(.{ .id = sv.child.? });
+                const root = self.getNode(sv.child.?);
                 const width: i32 = @intFromFloat(child.rectangle.width);
                 const height: i32 = @intFromFloat(child.rectangle.height);
                 if (width > sv.viewport.texture.width or height > sv.viewport.texture.height) {
@@ -483,9 +461,8 @@ pub fn end(self: *Self, allocator: std.mem.Allocator) !void {
                 root.rectangle.y = temp.y;
             }
         }
-    } else {
-        self.current_container = (try self.getNode(self.current_container)).parent;
     }
+    self.current_container = node.parent;
 }
 
 const ScrollViewOptions = struct {
@@ -497,7 +474,7 @@ const ScrollViewOptions = struct {
     foreground: ?rl.Color = null,
 };
 
-// TODO: add scroll slider
+// TODO: add scroll sliderp
 pub fn scrollViewBegin(self: *Self, allocator: std.mem.Allocator, scroll: *i32, viewport: *rl.RenderTexture, options: ScrollViewOptions) !void {
     scroll.* -= @intFromFloat(rl.getMouseWheelMove() * 80);
     self.current_container = try self.addNode(allocator, .{
@@ -510,7 +487,6 @@ pub fn scrollViewBegin(self: *Self, allocator: std.mem.Allocator, scroll: *i32, 
         },
         .background = options.background orelse style.background,
         .foreground = options.foreground orelse style.foreground,
-        .parent = self.current_container,
     });
 }
 
@@ -538,7 +514,6 @@ pub fn label(self: *Self, allocator: std.mem.Allocator, text: [:0]const u8, opti
         .border_size = options.border_size orelse style.border_size,
         .background = options.background orelse style.background,
         .foreground = options.foreground orelse style.foreground,
-        .parent = self.current_container,
         .sizes = null,
     });
 }
@@ -555,7 +530,7 @@ pub fn drawNode(self: *Self, root: *Node) !void {
                 root.rectangle.draw(b);
             }
             for (c.children.items) |id| {
-                const child = try self.getNode(.{ .id = id });
+                const child = self.getNode(id);
                 try self.drawNode(child);
             }
         },
@@ -579,8 +554,8 @@ pub fn drawNode(self: *Self, root: *Node) !void {
 }
 
 pub fn draw(self: *Self) !void {
-    if (self.current_container == .root) {
-        const root = try self.getNode(self.current_container);
+    if (self.current_container == null) {
+        const root = self.getNode(0);
         try self.drawNode(root);
     } else unreachable;
 }

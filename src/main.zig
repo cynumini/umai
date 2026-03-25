@@ -22,13 +22,13 @@ pub fn main() !void {
     defer v.deinit();
 
     while (!window.shouldClose()) {
-        var ui = UI.init();
+        var ui = UI{};
         defer _ = arena.reset(.retain_capacity);
 
         // update
         if (window.isResized()) {
             width = rl.getScreenWidth();
-            height = rl.getScreenWidth();
+            height = rl.getScreenHeight();
         }
         try ui.begin(allocator, .{
             .background = .red,
@@ -36,7 +36,7 @@ pub fn main() !void {
             .height = .{ .fixed = height },
         });
         {
-            try ui.begin(allocator, .{ .background = .green, .width = .grow, .height = .grow });
+            try ui.begin(allocator, .{ .id = "nya", .background = .green, .width = .grow, .height = .grow });
             {
                 try ui.label(allocator, "Yes, I am!", .{});
                 try ui.begin(allocator, .{
