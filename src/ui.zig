@@ -16,79 +16,18 @@ const Container = struct {
     alignment: Alignment,
     child_gap: u32,
     children_ids: std.ArrayList(usize) = .empty,
-
-    fn fit(node: *Node, ui: *Self, comptime size_type: Node.SizeType, comptime size_str: []const u8) u32 {
-        const self = &node.type.container;
-        const own_size: u32 = node.calcOwnSize(size_type);
-        const main_direction, const other_direction = switch (size_type) {
-            .width => .{ Container.Direction.left_to_right, Container.Direction.top_to_bottom },
-            .height => .{ Container.Direction.top_to_bottom, Container.Direction.left_to_right },
-        };
-
-        for (self.children_ids.items) |id| {
-            const child = ui.getNode(id);
-            child.fit(ui, size_type);
-        }
-        if (@field(node, size_str) == .fixed) {
-            return @field(node, size_str).fixed;
-        }
-        switch (self.direction) {
-            main_direction => {
-                var size = own_size;
-                if (self.children_ids.items.len > 0) {
-                    size += cast(u32, (self.children_ids.items.len - 1) * self.child_gap);
-                }
-                for (self.children_ids.items) |id| {
-                    const child = ui.getNode(id);
-                    size += @intFromFloat(@field(child.rectangle, size_str));
-                }
-                return size;
-            },
-            other_direction => {
-                var size: u32 = 0;
-                for (self.children_ids.items) |id| {
-                    const child = ui.getNode(id);
-                    size = @max(size, cast(u32, @field(child.rectangle, size_str)));
-                }
-                return own_size + size;
-            },
-        }
-    }
 };
 
 const ScrollView = struct {
     scroll: *i32,
     child_id: ?usize,
     render_texture: *rl.RenderTexture,
-
-    fn fit(node: *Node, ui: *Self, comptime size_type: Node.SizeType, comptime size_str: []const u8) u32 {
-        const self = &node.type.scroll_view;
-        if (self.child_id) |id| {
-            ui.getNode(id).fit(ui, size_type);
-        }
-        if (@field(node, size_str) == .fixed) {
-            return @field(node, size_str).fixed;
-        }
-        return node.calcOwnSize(size_type);
-    }
 };
 
 const Label = struct {
     text: [:0]const u8,
-    size: u32,
+    font_size: u32,
     wrap: bool,
-
-    fn fit(node: *Node, _: *Self, size_type: Node.SizeType, comptime _: []const u8) u32 {
-        const self = &node.type.label;
-        if (self.wrap) {
-            unreachable;
-        } else {
-            return node.calcOwnSize(size_type) + switch (size_type) {
-                .width => rl.measureText(self.text, self.size),
-                .height => self.size,
-            };
-        }
-    }
 };
 
 const Node = struct {
@@ -114,8 +53,8 @@ const Node = struct {
     };
     const Size = union(enum) { fit: void, grow: void, fixed: u32 };
 
-    type: Type,
     id: []const u8,
+    type: Type,
     width: Size = .fit,
     height: Size = .fit,
     parent: ?usize = null,
@@ -125,37 +64,11 @@ const Node = struct {
     foreground: ?rl.Color,
     rectangle: rl.Rectangle = .{},
 
-    fn fit(self: *Node, ui: *Self, size_type: SizeType) void {
-        switch (size_type) {
-            inline else => |st| {
-                const size_str = comptime st.toStr();
-
-                @field(self.rectangle, size_str) = cast(f32, switch (self.type) {
-                    .container => Container.fit(self, ui, st, size_str),
-                    .scroll_view => ScrollView.fit(self, ui, st, size_str),
-                    .label => Label.fit(self, ui, st, size_str),
-                });
-            },
-        }
-    }
-
-    const SizeType = enum {
-        width,
-        height,
-
-        fn toStr(comptime self: SizeType) []const u8 {
-            return switch (self) {
-                .width => "width",
-                .height => "height",
-            };
-        }
-    };
-
-    fn calcOwnSize(self: Node, size_type: SizeType) u32 {
-        return switch (size_type) {
+    fn calcOwnSize(self: Node, size_type: enum { width, height }) f32 {
+        return @floatFromInt(switch (size_type) {
             .width => self.paddings.left + self.paddings.right + (self.border_size * 2),
             .height => self.paddings.top + self.paddings.bottom + (self.border_size * 2),
-        };
+        });
     }
 };
 
@@ -217,8 +130,91 @@ pub fn begin(self: *Self, allocator: std.mem.Allocator, options: ContainerOption
     });
 }
 
+fn fitGeneric(self: *Self, children: std.ArrayList(usize), own_size: f32, comptime size_name: []const u8) !f32 {
+    var size: f32 = 0;
+    for (children.items) |id| {
+        const child = self.getNode(id);
+        size = @max(size, @field(child.rectangle, size_name));
+    }
+    return own_size + size;
+} // TODO: extend it
+
+fn fitWidth(self: *Self, root: *Node) !void {
+    const own_width: f32 = root.calcOwnSize(.width);
+    root.rectangle.width = blk: switch (root.type) {
+        .label => |l| if (l.wrap) {
+            unreachable;
+        } else {
+            break :blk cast(f32, rl.measureText(l.text, l.font_size)) + own_width;
+        },
+        .container => |c| {
+            for (c.children_ids.items) |id| {
+                const child = self.getNode(id);
+                try self.fitWidth(child);
+            }
+            if (root.width == .fixed) break :blk @floatFromInt(root.width.fixed);
+            switch (c.direction) {
+                .left_to_right => {
+                    var width = own_width;
+                    if (c.children_ids.items.len > 0) {
+                        width += cast(f32, (c.children_ids.items.len - 1) * c.child_gap);
+                    }
+                    for (c.children_ids.items) |id| {
+                        const child = self.getNode(id);
+                        width += child.rectangle.width;
+                    }
+                    break :blk width;
+                },
+                .top_to_bottom => break :blk try self.fitGeneric(c.children_ids, own_width, "width"),
+            }
+        },
+        .scroll_view => {
+            if (root.width == .fixed) break :blk @floatFromInt(root.width.fixed);
+            break :blk own_width;
+        },
+    };
+}
+
+// fit height don't pass fitHeight through scroll_view
+fn fitHeight(self: *Self, root: *Node) !void {
+    const own_height: f32 = root.calcOwnSize(.height);
+    root.rectangle.height = blk: switch (root.type) {
+        .label => |l| if (l.wrap) {
+            unreachable;
+        } else {
+            break :blk cast(f32, l.font_size) + own_height;
+        },
+        .container => |c| {
+            for (c.children_ids.items) |id| {
+                const child = self.getNode(id);
+                try self.fitHeight(child);
+            }
+            if (root.height == .fixed) break :blk @floatFromInt(root.height.fixed);
+            switch (c.direction) {
+                .top_to_bottom => {
+                    var height = own_height;
+                    if (c.children_ids.items.len > 0) {
+                        height += cast(f32, (c.children_ids.items.len - 1) * c.child_gap);
+                    }
+                    for (c.children_ids.items) |id| {
+                        const child = self.getNode(id);
+                        height += child.rectangle.height;
+                    }
+                    break :blk height;
+                },
+                .left_to_right => break :blk try self.fitGeneric(c.children_ids, own_height, "height"),
+            }
+        },
+        .scroll_view => |cv| {
+            if (cv.child_id) |child_id| try self.fitHeight(self.getNode(child_id));
+            if (root.height == .fixed) break :blk @floatFromInt(root.height.fixed);
+            break :blk own_height;
+        },
+    };
+}
+
 fn growWidth(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
-    var remaining_width = root.rectangle.width - cast(f32, root.calcOwnSize(.width));
+    var remaining_width = root.rectangle.width - root.calcOwnSize(.width);
     var growable = std.ArrayList(*Node).empty;
     defer growable.deinit(allocator);
 
@@ -273,7 +269,7 @@ fn growWidth(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
 }
 
 fn growHeight(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
-    var remaining_height = root.rectangle.height - cast(f32, root.calcOwnSize(.height));
+    var remaining_height = root.rectangle.height - root.calcOwnSize(.height);
     var growable = std.ArrayList(*Node).empty;
     defer growable.deinit(allocator);
 
@@ -409,10 +405,10 @@ pub fn end(self: *Self, allocator: std.mem.Allocator) !void {
     const node = self.getNode(self.current_container.?);
     if (node.parent == null) {
         const root_root = node;
-        node.fit(self, .width);
+        try self.fitWidth(root_root);
         try self.growWidth(allocator, root_root);
         // Wrap text
-        node.fit(self, .height);
+        try self.fitHeight(root_root);
         try self.growHeight(allocator, root_root);
         try self.position(root_root);
 
@@ -494,7 +490,7 @@ pub fn label(self: *Self, allocator: std.mem.Allocator, text: [:0]const u8, opti
         .type = .{ .label = .{
             .text = text,
             .wrap = options.wrap,
-            .size = options.font_size orelse self.style.font_size,
+            .font_size = options.font_size orelse self.style.font_size,
         } },
         .paddings = options.paddings orelse self.style.paddings,
         .border_size = options.border_size orelse self.style.border_size,
@@ -524,7 +520,7 @@ pub fn drawNode(self: *Self, root: *Node) !void {
                 .x = root.rectangle.x + cast(f32, root.paddings.left),
                 .y = root.rectangle.y + cast(f32, root.paddings.top),
             };
-            rl.drawText(l.text, @intFromFloat(offest.x), @intFromFloat(offest.y), @intCast(l.size), root.foreground.?);
+            rl.drawText(l.text, @intFromFloat(offest.x), @intFromFloat(offest.y), @intCast(l.font_size), root.foreground.?);
         },
         .scroll_view => |sv| {
             const diff: f32 = cast(f32, sv.render_texture.texture.height) - root.rectangle.height;
