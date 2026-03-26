@@ -30,13 +30,18 @@ pub fn main() !void {
             width = rl.getScreenWidth();
             height = rl.getScreenHeight();
         }
+
         try ui.begin(allocator, .{
             .background = .red,
             .width = .{ .fixed = width },
             .height = .{ .fixed = height },
         });
         {
-            try ui.begin(allocator, .{ .id = "nya", .background = .green, .width = .grow, .height = .grow });
+            try ui.begin(allocator, .{
+                .background = .green,
+                .width = .grow,
+                .height = .grow,
+            });
             {
                 try ui.label(allocator, "Yes, I am!", .{});
                 try ui.begin(allocator, .{
@@ -45,10 +50,20 @@ pub fn main() !void {
                     .height = .{ .fixed = 100 },
                 });
                 try ui.end(allocator);
-                try ui.scrollViewBegin(allocator, &scroll, &v, .{ .width = .grow, .height = .grow });
+                try ui.scrollViewBegin(allocator, &scroll, &v, .{
+                    .width = .grow,
+                    .height = .grow,
+                });
                 {
                     try ui.begin(allocator, .{ .direction = .top_to_bottom });
-                    for (0..500) |i| try ui.labelFmt(allocator, "Hello, number {}!", .{i + 1}, .{});
+                    for (0..500) |i| {
+                        try ui.labelFmt(
+                            allocator,
+                            "Hello, number {}!",
+                            .{i + 1},
+                            .{},
+                        );
+                    }
                     try ui.end(allocator);
                 }
                 try ui.scrollViewEnd(allocator);
@@ -56,6 +71,7 @@ pub fn main() !void {
             try ui.end(allocator);
         }
         try ui.end(allocator);
+
         // draw
         rl.beginDrawing();
         rl.clearBackground(rl.Color.white);
