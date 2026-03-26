@@ -5,10 +5,17 @@ const UI = @import("ui.zig");
 
 const assert = std.debug.assert;
 
+fn on_update(ui: *UI, node: *UI.Node, data: ?*anyopaque) void {
+    _ = ui;
+    _ = node;
+    _ = data;
+    std.debug.print("my callback\n", .{});
+}
+
 pub fn main() !void {
     var width: u32 = 1280;
     var height: u32 = 720;
-    var scroll: i32 = 0;
+    //var scroll: i32 = 0;
 
     rl.ConfigFlags.set(.{ .window_resizable = true });
     const window = rl.Window.init(width, height, "umai");
@@ -32,50 +39,21 @@ pub fn main() !void {
         }
 
         try ui.begin(allocator, .{
-            .background = .red,
             .width = .{ .fixed = width },
             .height = .{ .fixed = height },
         });
-        {
-            try ui.begin(allocator, .{
-                .background = .green,
-                .width = .grow,
-                .height = .grow,
-            });
-            {
-                try ui.label(allocator, "Yes, I am!", .{});
-                try ui.begin(allocator, .{
-                    .background = .blue,
-                    .width = .{ .fixed = 100 },
-                    .height = .{ .fixed = 100 },
-                });
-                try ui.end(allocator);
-                try ui.scrollViewBegin(allocator, &scroll, &v, .{
-                    .width = .grow,
-                    .height = .grow,
-                });
-                {
-                    try ui.begin(allocator, .{ .direction = .top_to_bottom });
-                    for (0..500) |i| {
-                        try ui.labelFmt(
-                            allocator,
-                            "Hello, number {}!",
-                            .{i + 1},
-                            .{},
-                        );
-                    }
-                    try ui.end(allocator);
-                }
-                try ui.scrollViewEnd(allocator);
-            }
-            try ui.end(allocator);
-        }
+        try ui.begin(allocator, .{ .background = .blue });
+        try ui.label(allocator, "Add a food", .{
+            .on_update = on_update,
+        });
+        try ui.end(allocator);
         try ui.end(allocator);
 
         // draw
         rl.beginDrawing();
-        rl.clearBackground(rl.Color.white);
+        rl.clearBackground(.light_gray);
         try ui.draw();
         rl.endDrawing();
+        break;
     }
 }

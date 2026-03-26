@@ -38,7 +38,20 @@ const Label = struct {
     wrap: bool,
 };
 
-const Node = struct {
+const Event = struct {
+    data: ?*anyopaque,
+    vtable: VTable,
+
+    const VTable = struct {
+        on_update: *const fn (ui: *Self, node: *Node, data: ?*anyopaque) void,
+    };
+
+    pub fn on_update(self: Event, ui: *Self, node: *Node) void {
+        self.vtable.on_update(ui, node, self.data);
+    }
+};
+
+pub const Node = struct {
     const Type = union(enum) {
         container: Container,
         label: Label,
@@ -71,6 +84,7 @@ const Node = struct {
     background: ?rl.Color,
     foreground: ?rl.Color,
     rectangle: rl.Rectangle = .{},
+    event: Event,
 
     fn calcBaseWidth(self: Node) u32 {
         return self.paddings.left + self.paddings.right + (self.border_size * 2);
@@ -121,6 +135,8 @@ const ContainerOptions = struct {
     height: Node.Size = .fit,
     background: ?rl.Color = null,
     foreground: ?rl.Color = null,
+    data: ?*anyopaque = null,
+    on_update: *const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = default_on_update,
 };
 
 pub fn begin(self: *Self, allocator: std.mem.Allocator, options: ContainerOptions) !void {
@@ -137,6 +153,10 @@ pub fn begin(self: *Self, allocator: std.mem.Allocator, options: ContainerOption
         .height = options.height,
         .background = options.background orelse self.style.background,
         .foreground = options.foreground orelse self.style.foreground,
+        .event = .{
+            .data = options.data,
+            .vtable = .{ .on_update = options.on_update },
+        },
     });
 }
 
@@ -416,6 +436,9 @@ pub fn end(self: *Self, allocator: std.mem.Allocator) !void {
                 sv.render_texture.end();
             }
         }
+
+        // Update
+        container_node.event.on_update(self, container_node);
     }
 }
 
@@ -427,6 +450,8 @@ const ScrollViewOptions = struct {
     height: Node.Size = .fit,
     background: ?rl.Color = null,
     foreground: ?rl.Color = null,
+    data: ?*anyopaque = null,
+    on_update: *const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = default_on_update,
 };
 
 // TODO: add scroll sliderp
@@ -441,6 +466,12 @@ pub fn scrollViewBegin(self: *Self, allocator: std.mem.Allocator, scroll: *i32, 
         .height = options.height,
         .background = options.background orelse self.style.scroll_view_background,
         .foreground = options.foreground orelse self.style.foreground,
+        .event = .{
+            .data = options.data,
+            .vtable = &.{
+                .on_update = options.on_update,
+            },
+        },
     });
 }
 
@@ -456,6 +487,8 @@ const LabelOptions = struct {
     background: ?rl.Color = null,
     foreground: ?rl.Color = null,
     wrap: bool = false,
+    data: ?*anyopaque = null,
+    on_update: *const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = default_on_update,
 };
 
 pub fn label(self: *Self, allocator: std.mem.Allocator, text: [:0]const u8, options: LabelOptions) !void {
@@ -470,6 +503,12 @@ pub fn label(self: *Self, allocator: std.mem.Allocator, text: [:0]const u8, opti
         .border_size = options.border_size orelse self.style.border_size,
         .background = options.background orelse self.style.background,
         .foreground = options.foreground orelse self.style.foreground,
+        .event = .{
+            .data = options.data,
+            .vtable = .{
+                .on_update = options.on_update,
+            },
+        },
     });
 }
 
@@ -518,4 +557,24 @@ pub fn drawNode(self: *Self, node: *Node) !void {
 pub fn draw(self: *Self) !void {
     if (self.current_container != null) unreachable;
     try self.drawNode(self.getNode(0));
+}
+
+fn default_on_update(self: *Self, node: *Node, data: ?*anyopaque) void {
+    _ = data;
+    std.debug.print("on update\n", .{});
+
+    // propagate
+    switch (node.type) {
+        .container => |c| {
+            for (c.children_ids.items) |id| {
+                const child = self.getNode(id);
+                child.event.on_update(self, child);
+            }
+        },
+        .scroll_view => |sv| {
+            const child = self.getNode(sv.child_id.?);
+            child.event.on_update(self, child);
+        },
+        .label => {},
+    }
 }
