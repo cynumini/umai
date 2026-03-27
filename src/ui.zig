@@ -3,11 +3,16 @@ const rl = @import("raylib");
 
 const cast = std.math.lossyCast;
 
+const tab_container = @import("tab_container.zig");
+
 const Self = @This();
 
 current_container: ?usize = null,
 nodes: std.ArrayList(Node) = .empty,
 style: Style = .{},
+mouse_position: rl.Vector2 = .{},
+is_mouse_button_down: bool = false,
+is_mouse_button_pressed: bool = false,
 
 const Container = struct {
     const Direction = enum { left_to_right, top_to_bottom };
@@ -17,8 +22,14 @@ const Container = struct {
     child_gap: u32,
     children_ids: std.ArrayList(usize) = .empty,
 
-    fn totalChildGap(self: Container) u32 {
-        const len: u32 = @intCast(self.children_ids.items.len);
+    fn totalChildGap(self: Container, ui: *Self) u32 {
+        const len: u32 = blk: {
+            var tmp: u32 = 0;
+            for (self.children_ids.items) |id| {
+                if (ui.getNode(id).visible) tmp += 1;
+            }
+            break :blk tmp;
+        };
         if (len > 0) {
             return (len - 1) * self.child_gap;
         }
@@ -43,11 +54,53 @@ const Event = struct {
     vtable: VTable,
 
     const VTable = struct {
-        on_update: *const fn (ui: *Self, node: *Node, data: ?*anyopaque) void,
+        on_update: ?*const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = null,
+        on_click: ?*const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = null,
     };
 
     pub fn on_update(self: Event, ui: *Self, node: *Node) void {
-        self.vtable.on_update(ui, node, self.data);
+        // propagate
+        switch (node.type) {
+            .container => |c| {
+                for (c.children_ids.items) |id| {
+                    const child = ui.getNode(id);
+                    child.event.on_update(ui, child);
+                }
+            },
+            .scroll_view => |sv| {
+                const child = ui.getNode(sv.child_id.?);
+                child.event.on_update(ui, child);
+            },
+            .label => {},
+        }
+        if (self.vtable.on_update) |callback| callback(ui, node, self.data);
+    }
+
+    pub fn on_mouse_over(_: Event, ui: *Self, node: *Node) void {
+        node.is_mouse_over = true;
+        if (ui.is_mouse_button_down) node.is_mouse_down = true;
+        if (ui.is_mouse_button_pressed) {
+            node.is_mouse_click = true;
+            node.event.on_click(ui, node);
+        }
+
+        // propagate
+        switch (node.type) {
+            .container => |c| {
+                for (c.children_ids.items) |id| {
+                    const child = ui.getNode(id);
+                    if (ui.mouse_position.checkCollisionRec(child.rectangle)) {
+                        child.event.on_mouse_over(ui, child);
+                    }
+                }
+            },
+            .scroll_view => unreachable,
+            else => {},
+        }
+    }
+
+    pub fn on_click(self: Event, ui: *Self, node: *Node) void {
+        if (self.vtable.on_click) |callback| callback(ui, node, self.data);
     }
 };
 
@@ -85,6 +138,10 @@ pub const Node = struct {
     foreground: ?rl.Color,
     rectangle: rl.Rectangle = .{},
     event: Event,
+    is_mouse_over: bool = false,
+    is_mouse_down: bool = false,
+    is_mouse_click: bool = false,
+    visible: bool = true,
 
     fn calcBaseWidth(self: Node) u32 {
         return self.paddings.left + self.paddings.right + (self.border_size * 2);
@@ -105,8 +162,17 @@ const Style = struct {
     font_size: u32 = 20,
 };
 
-fn getNode(self: *Self, node_id: usize) *Node {
-    return &self.nodes.items[node_id];
+pub fn getNode(self: *Self, id: usize) *Node {
+    return &self.nodes.items[id];
+}
+
+pub fn getById(self: *Self, node_id: []const u8) ?*Node {
+    for (self.nodes.items) |*node| {
+        if (std.mem.eql(u8, node.id, node_id)) {
+            return node;
+        }
+    }
+    return null;
 }
 
 fn addNode(self: *Self, allocator: std.mem.Allocator, node: Node) !usize {
@@ -135,8 +201,9 @@ const ContainerOptions = struct {
     height: Node.Size = .fit,
     background: ?rl.Color = null,
     foreground: ?rl.Color = null,
+    visible: bool = true,
     data: ?*anyopaque = null,
-    on_update: *const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = default_on_update,
+    on_update: ?*const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = null,
 };
 
 pub fn begin(self: *Self, allocator: std.mem.Allocator, options: ContainerOptions) !void {
@@ -147,6 +214,7 @@ pub fn begin(self: *Self, allocator: std.mem.Allocator, options: ContainerOption
             .alignment = options.alignment,
             .child_gap = options.child_gap orelse self.style.child_gap,
         } },
+        .visible = options.visible,
         .paddings = options.paddings orelse self.style.paddings,
         .border_size = options.border_size orelse self.style.border_size,
         .width = options.width,
@@ -155,7 +223,9 @@ pub fn begin(self: *Self, allocator: std.mem.Allocator, options: ContainerOption
         .foreground = options.foreground orelse self.style.foreground,
         .event = .{
             .data = options.data,
-            .vtable = .{ .on_update = options.on_update },
+            .vtable = .{
+                .on_update = options.on_update,
+            },
         },
     });
 }
@@ -177,7 +247,7 @@ fn fitWidth(self: *Self, node: *Node) !void {
             var width: f32 = 0;
             switch (c.direction) {
                 .left_to_right => {
-                    width = @floatFromInt(c.totalChildGap());
+                    width = @floatFromInt(c.totalChildGap(self));
                     for (c.children_ids.items) |id| {
                         width += self.getNode(id).rectangle.width;
                     }
@@ -214,7 +284,7 @@ fn fitHeight(self: *Self, node: *Node) !void {
             var height: f32 = 0;
             switch (c.direction) {
                 .top_to_bottom => {
-                    height = @floatFromInt(c.totalChildGap());
+                    height = @floatFromInt(c.totalChildGap(self));
                     for (c.children_ids.items) |id| {
                         height += self.getNode(id).rectangle.height;
                     }
@@ -243,9 +313,10 @@ fn growWidth(self: *Self, allocator: std.mem.Allocator, root: *Node) !void {
 
     switch (container.direction) {
         .left_to_right => {
-            remaining_width -= @floatFromInt(container.totalChildGap());
+            remaining_width -= @floatFromInt(container.totalChildGap(self));
             for (container.children_ids.items) |id| {
                 const child = self.getNode(id);
+                if (!child.visible) continue;
                 remaining_width -= child.rectangle.width;
                 if (child.width == .grow) try growable.append(allocator, child);
             }
@@ -296,9 +367,10 @@ fn growHeight(self: *Self, allocator: std.mem.Allocator, node: *Node) !void {
 
     switch (container.direction) {
         .top_to_bottom => {
-            remaining_height -= @floatFromInt(container.totalChildGap());
+            remaining_height -= @floatFromInt(container.totalChildGap(self));
             for (container.children_ids.items) |id| {
                 const child = self.getNode(id);
+                if (!child.visible) continue;
                 remaining_height -= child.rectangle.height;
                 if (child.height == .grow) try growable.append(allocator, child);
             }
@@ -346,7 +418,7 @@ fn positionChildren(self: *Self, node: *Node) !void {
             var left_offset = node.rectangle.x + cast(f32, node.paddings.right + node.border_size);
             var top_offset = node.rectangle.y + cast(f32, node.paddings.top + node.border_size);
 
-            const tcg: f32 = @floatFromInt(c.totalChildGap());
+            const tcg: f32 = @floatFromInt(c.totalChildGap(self));
             var remaining_width = node.rectangle.width - tcg;
             var remaining_height = node.rectangle.height - tcg;
 
@@ -363,6 +435,7 @@ fn positionChildren(self: *Self, node: *Node) !void {
                     }
                     for (c.children_ids.items) |id| {
                         const child = self.getNode(id);
+                        if (!child.visible) continue;
                         child.rectangle.x += left_offset;
                         if (c.alignment == .center) {
                             child.rectangle.y = (node.rectangle.height - child.rectangle.height) / 2;
@@ -379,6 +452,7 @@ fn positionChildren(self: *Self, node: *Node) !void {
                     }
                     for (c.children_ids.items) |id| {
                         const child = self.getNode(id);
+                        if (!child.visible) continue;
                         child.rectangle.y += top_offset;
                         if (c.alignment == .center) {
                             child.rectangle.x += (node.rectangle.width - child.rectangle.width) / 2;
@@ -409,6 +483,7 @@ pub fn end(self: *Self, allocator: std.mem.Allocator) !void {
     const container_node = self.getNode(self.current_container.?);
     self.current_container = container_node.parent;
     if (container_node.parent == null) {
+        const root = container_node;
         try self.fitWidth(container_node);
         try self.growWidth(allocator, container_node);
         // Wrap text
@@ -438,7 +513,13 @@ pub fn end(self: *Self, allocator: std.mem.Allocator) !void {
         }
 
         // Update
-        container_node.event.on_update(self, container_node);
+        self.mouse_position = rl.getMousePosition();
+        self.is_mouse_button_down = rl.isMouseButtonDown(.left);
+        self.is_mouse_button_pressed = rl.isMouseButtonPressed(.left);
+        if (self.mouse_position.checkCollisionRec(root.rectangle)) {
+            root.event.on_mouse_over(self, root);
+        }
+        root.event.on_update(self, container_node);
     }
 }
 
@@ -451,7 +532,7 @@ const ScrollViewOptions = struct {
     background: ?rl.Color = null,
     foreground: ?rl.Color = null,
     data: ?*anyopaque = null,
-    on_update: *const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = default_on_update,
+    on_update: *const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = null,
 };
 
 // TODO: add scroll sliderp
@@ -488,7 +569,8 @@ const LabelOptions = struct {
     foreground: ?rl.Color = null,
     wrap: bool = false,
     data: ?*anyopaque = null,
-    on_update: *const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = default_on_update,
+    on_update: ?*const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = null,
+    on_click: ?*const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = null,
 };
 
 pub fn label(self: *Self, allocator: std.mem.Allocator, text: [:0]const u8, options: LabelOptions) !void {
@@ -507,8 +589,34 @@ pub fn label(self: *Self, allocator: std.mem.Allocator, text: [:0]const u8, opti
             .data = options.data,
             .vtable = .{
                 .on_update = options.on_update,
+                .on_click = options.on_click,
             },
         },
+    });
+}
+
+fn button_on_update(_: *Self, node: *Node, _: ?*anyopaque) void {
+    if (node.is_mouse_down) {
+        node.background = .dark_gray;
+    } else if (node.is_mouse_over) {
+        node.background = .lime;
+    }
+}
+
+const ButtonOptions = struct {
+    background: ?rl.Color = .gray,
+    data: ?*anyopaque = null,
+    on_click: ?*const fn (ui: *Self, node: *Node, data: ?*anyopaque) void = null,
+};
+
+pub fn button(self: *Self, allocator: std.mem.Allocator, text: [:0]const u8, options: ButtonOptions) !void {
+    try self.label(allocator, text, .{
+        .background = options.background,
+        .border_size = 1,
+        .on_update = button_on_update,
+        .data = options.data,
+
+        .on_click = options.on_click,
     });
 }
 
@@ -518,6 +626,7 @@ pub fn labelFmt(self: *Self, allocator: std.mem.Allocator, comptime fmt: []const
 
 // TODO: discard out of screen
 pub fn drawNode(self: *Self, node: *Node) !void {
+    if (!node.visible) return;
     switch (node.type) {
         .container => |c| {
             if (node.background) |b| {
@@ -526,9 +635,15 @@ pub fn drawNode(self: *Self, node: *Node) !void {
             for (c.children_ids.items) |id| try self.drawNode(self.getNode(id));
         },
         .label => |l| {
+            if (node.background) |b| {
+                node.rectangle.draw(b);
+            }
+            if (node.border_size > 0) {
+                node.rectangle.drawLines(node.border_size, .black);
+            }
             const offest: rl.Vector2 = .{
-                .x = node.rectangle.x + cast(f32, node.paddings.left),
-                .y = node.rectangle.y + cast(f32, node.paddings.top),
+                .x = node.rectangle.x + cast(f32, node.paddings.left + node.border_size),
+                .y = node.rectangle.y + cast(f32, node.paddings.top + node.border_size),
             };
             rl.drawText(
                 l.text,
@@ -559,22 +674,7 @@ pub fn draw(self: *Self) !void {
     try self.drawNode(self.getNode(0));
 }
 
-fn default_on_update(self: *Self, node: *Node, data: ?*anyopaque) void {
-    _ = data;
-    std.debug.print("on update\n", .{});
-
-    // propagate
-    switch (node.type) {
-        .container => |c| {
-            for (c.children_ids.items) |id| {
-                const child = self.getNode(id);
-                child.event.on_update(self, child);
-            }
-        },
-        .scroll_view => |sv| {
-            const child = self.getNode(sv.child_id.?);
-            child.event.on_update(self, child);
-        },
-        .label => {},
-    }
-}
+pub const tabContainerBegin = tab_container.begin;
+pub const tabContainerEnd = tab_container.end;
+pub const tabBegin = tab_container.tabBegin;
+pub const tabEnd = tab_container.tabEnd;

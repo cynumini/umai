@@ -6,6 +6,10 @@ pub const Vector2 = extern struct {
     x: f32 = 0,
     /// Vector y component
     y: f32 = 0,
+
+    extern fn CheckCollisionPointRec(point: Vector2, rec: Rectangle) bool;
+    /// Check if point is inside rectangle
+    pub const checkCollisionRec = CheckCollisionPointRec;
 };
 
 /// Color, 4 components, R8G8B8A8 (32bit)
@@ -88,6 +92,12 @@ pub const Rectangle = extern struct {
     extern fn DrawRectangleRec(rec: Rectangle, color: Color) void;
     /// Draw a color-filled rectangle
     pub const draw = DrawRectangleRec;
+
+    extern fn DrawRectangleLinesEx(rec: Rectangle, lineThick: f32, color: Color) void;
+    /// Draw rectangle outline with extended parameters
+    pub fn drawLines(self: Rectangle, line_thick: u32, color: Color) void {
+        self.DrawRectangleLinesEx(@floatFromInt(line_thick), color);
+    }
 };
 
 /// Texture, tex data stored in GPU memory (VRAM)
@@ -445,6 +455,38 @@ pub const beginDrawing = BeginDrawing;
 extern fn EndDrawing() void;
 /// End canvas drawing and swap buffers (double buffering)
 pub const endDrawing = EndDrawing;
+
+extern fn SetTargetFPS(fps: c_int) void;
+/// Set target FPS (maximum)
+pub fn setTargetFPS(fps: u32) void {
+    SetTargetFPS(@intCast(fps));
+}
+
+const MouseButton = enum(c_int) {
+    left = 0,
+    right = 1,
+    middle = 2,
+    side = 3,
+    extra = 4,
+    forward = 5,
+    back = 6,
+};
+
+extern fn IsMouseButtonPressed(button: c_int) bool;
+/// Check if a mouse button has been pressed once
+pub fn isMouseButtonPressed(button: MouseButton) bool {
+    return IsMouseButtonPressed(@intFromEnum(button));
+}
+
+extern fn IsMouseButtonDown(button: c_int) bool;
+/// Check if a mouse button is being pressed
+pub fn isMouseButtonDown(button: MouseButton) bool {
+    return IsMouseButtonDown(@intFromEnum(button));
+}
+
+extern fn GetMousePosition() Vector2;
+/// Get mouse position XY
+pub const getMousePosition = GetMousePosition;
 
 extern fn GetMouseWheelMove() f32;
 /// Get mouse wheel movement for X or Y, whichever is larger
