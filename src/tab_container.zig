@@ -36,10 +36,6 @@ fn tab_button_on_click(_: *UI, _: *UI.Node, data: ?*anyopaque) void {
     }
 }
 
-const TabOptions = struct {
-    background: ?rl.Color = null,
-};
-
 pub fn end(self: *UI, allocator: std.mem.Allocator, tab_container: TabContainer) !void {
     for (tab_container.tabs.items) |tab| {
         if (tab.id != tab_container.tab_index.*) {
@@ -59,6 +55,11 @@ pub fn end(self: *UI, allocator: std.mem.Allocator, tab_container: TabContainer)
     try self.end(allocator);
 }
 
+const TabOptions = struct {
+    background: ?rl.Color = null,
+    direction: UI.Container.Direction = .left_to_right,
+};
+
 pub fn tabBegin(
     self: *UI,
     allocator: std.mem.Allocator,
@@ -74,6 +75,7 @@ pub fn tabBegin(
     });
     try self.begin(allocator, .{
         .background = options.background orelse self.style.background,
+        .direction = options.direction,
         .width = .grow,
         .height = .grow,
     });

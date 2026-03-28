@@ -3,7 +3,8 @@ const rl = @import("raylib");
 
 const cast = std.math.lossyCast;
 
-const tab_container = @import("tab_container.zig");
+const ui_tab_container = @import("tab_container.zig");
+const ui_table = @import("table.zig");
 
 const Self = @This();
 
@@ -14,9 +15,19 @@ mouse_position: rl.Vector2 = .{},
 is_mouse_button_down: bool = false,
 is_mouse_button_pressed: bool = false,
 
-const Container = struct {
-    const Direction = enum { left_to_right, top_to_bottom };
-    const Alignment = enum { left_top, left_center, left_bottom, center_top, center, center_bottom, right_top, right_center, right_bottom };
+pub const Container = struct {
+    pub const Direction = enum { left_to_right, top_to_bottom };
+    const Alignment = enum {
+        left_top,
+        left_center,
+        left_bottom,
+        center_top,
+        center,
+        center_bottom,
+        right_top,
+        right_center,
+        right_bottom,
+    };
     direction: Direction,
     alignment: Alignment,
     child_gap: u32,
@@ -71,7 +82,7 @@ const Event = struct {
                 const child = ui.getNode(sv.child_id.?);
                 child.event.on_update(ui, child);
             },
-            .label => {},
+            .label, .table, .row => {},
         }
         if (self.vtable.on_update) |callback| callback(ui, node, self.data);
     }
@@ -109,8 +120,10 @@ pub const Node = struct {
         container: Container,
         label: Label,
         scroll_view: ScrollView,
+        table: ui_table.Table,
+        row: ui_table.Row,
     };
-    const Paddings = struct {
+    pub const Paddings = struct {
         top: u32,
         left: u32,
         bottom: u32,
@@ -175,7 +188,7 @@ pub fn getById(self: *Self, node_id: []const u8) ?*Node {
     return null;
 }
 
-fn addNode(self: *Self, allocator: std.mem.Allocator, node: Node) !usize {
+pub fn addNode(self: *Self, allocator: std.mem.Allocator, node: Node) !usize {
     try self.nodes.append(allocator, node);
     const id = self.nodes.items.len - 1;
     self.getNode(id).parent = self.current_container;
@@ -264,6 +277,34 @@ fn fitWidth(self: *Self, node: *Node) !void {
             try self.fitHeight(self.getNode(sv.child_id.?));
             break :blk if (node.width == .fixed) @floatFromInt(node.width.fixed) else base_width;
         },
+        .row => |r| {
+            for (r.children_ids.items) |id| {
+                const child = self.getNode(id);
+                try self.fitWidth(child);
+            }
+            break :blk 0;
+        },
+        .table => |t| {
+            var column: usize = 0;
+            var width: f32 = 0;
+            for (t.children_ids.items) |id| {
+                const child = self.getNode(id);
+                column = @max(column, child.type.row.children_ids.items.len);
+                try self.fitWidth(child);
+            }
+            for (0..column) |i| {
+                var cell_widht: f32 = 0;
+                for (t.children_ids.items) |id| {
+                    const row_child = self.getNode(id);
+                    const cell_child_id = row_child.type.row.children_ids.items[i];
+                    cell_widht = @max(cell_widht, self.getNode(cell_child_id).rectangle.width);
+                }
+                t.cells_widths.items[i] = cell_widht;
+                width += cell_widht;
+            }
+
+            break :blk base_width + width;
+        },
     };
 }
 
@@ -300,6 +341,25 @@ fn fitHeight(self: *Self, node: *Node) !void {
         .scroll_view => |sv| {
             try self.fitHeight(self.getNode(sv.child_id.?));
             break :blk if (node.height == .fixed) @floatFromInt(node.height.fixed) else base_height;
+        },
+        .row => |r| {
+            var height: f32 = 0;
+            for (r.children_ids.items) |id| {
+                const child = self.getNode(id);
+                try self.fitHeight(child);
+                height = @max(height, child.rectangle.height);
+            }
+            break :blk height + base_height;
+        },
+        .table => |t| {
+            var height: f32 = 0;
+            for (t.children_ids.items, 0..) |id, i| {
+                const child = self.getNode(id);
+                try self.fitHeight(child);
+                t.rows_height.items[i] = child.rectangle.height;
+                height += t.rows_height.items[i];
+            }
+            break :blk base_height + height;
         },
     };
 }
@@ -666,6 +726,14 @@ pub fn drawNode(self: *Self, node: *Node) !void {
                 .white,
             );
         },
+        .table => |t| {
+            _ = t;
+            node.rectangle.draw(.yellow);
+        },
+        .row => |r| {
+            _ = r;
+            unreachable;
+        },
     }
 }
 
@@ -674,7 +742,12 @@ pub fn draw(self: *Self) !void {
     try self.drawNode(self.getNode(0));
 }
 
-pub const tabContainerBegin = tab_container.begin;
-pub const tabContainerEnd = tab_container.end;
-pub const tabBegin = tab_container.tabBegin;
-pub const tabEnd = tab_container.tabEnd;
+pub const tabContainerBegin = ui_tab_container.begin;
+pub const tabContainerEnd = ui_tab_container.end;
+pub const tabBegin = ui_tab_container.tabBegin;
+pub const tabEnd = ui_tab_container.tabEnd;
+
+pub const tableBegin = ui_table.begin;
+pub const tableEnd = ui_table.end;
+pub const rowBegin = ui_table.rowBegin;
+pub const rowEnd = ui_table.rowEnd;

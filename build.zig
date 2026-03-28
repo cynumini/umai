@@ -9,6 +9,14 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
     });
     raylib.linkSystemLibrary("raylib", .{});
+
+    const sqlite3 = b.createModule(.{
+        .root_source_file = b.path("src/sqlite3.zig"),
+        .target = target,
+        .link_libc = true,
+    });
+    sqlite3.linkSystemLibrary("sqlite3", .{});
+
     const exe = b.addExecutable(.{
         .name = "umai",
         .use_llvm = true,
@@ -18,6 +26,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "raylib", .module = raylib },
+                .{ .name = "sqlite3", .module = sqlite3 },
             },
         }),
     });
