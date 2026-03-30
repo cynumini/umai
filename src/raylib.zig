@@ -2,10 +2,38 @@ const std = @import("std");
 
 /// Vector2, 2 components
 pub const Vector2 = extern struct {
+    /// Vector with components value 0.0f
+    pub const zero = Vector2{ .x = 0, .y = 0 };
+
     /// Vector x component
     x: f32 = 0,
     /// Vector y component
     y: f32 = 0,
+
+    pub fn toRectangle(self: Vector2, width: f32, height: f32) Rectangle {
+        return .{
+            .x = self.x,
+            .y = self.y,
+            .width = width,
+            .height = height,
+        };
+    }
+
+    pub fn toRectangleV(self: Vector2, sizes: Vector2) Rectangle {
+        return self.toRectangle(sizes.x, sizes.y);
+    }
+
+    pub fn toRectangleZero(self: Vector2) Rectangle {
+        return self.toRectangle(0, 0);
+    }
+
+    /// Add vector and float value
+    pub fn addValue(self: Vector2, add: f32) Vector2 {
+        return .{
+            .x = self.x + add,
+            .y = self.y + add,
+        };
+    }
 
     extern fn CheckCollisionPointRec(point: Vector2, rec: Rectangle) bool;
     /// Check if point is inside rectangle
@@ -89,14 +117,20 @@ pub const Rectangle = extern struct {
     /// Rectangle height
     height: f32 = 0,
 
+    pub fn toVector2(self: Rectangle) Vector2 {
+        return .{ .x = self.x, .y = self.y };
+    }
+
     extern fn DrawRectangleRec(rec: Rectangle, color: Color) void;
     /// Draw a color-filled rectangle
-    pub const draw = DrawRectangleRec;
+    pub fn draw(self: Rectangle, color: Color) void {
+        self.DrawRectangleRec(color);
+    }
 
     extern fn DrawRectangleLinesEx(rec: Rectangle, lineThick: f32, color: Color) void;
     /// Draw rectangle outline with extended parameters
-    pub fn drawLines(self: Rectangle, line_thick: u32, color: Color) void {
-        self.DrawRectangleLinesEx(@floatFromInt(line_thick), color);
+    pub fn drawLines(self: Rectangle, line_thick: f32, color: Color) void {
+        self.DrawRectangleLinesEx(line_thick, color);
     }
 };
 
@@ -494,10 +528,12 @@ pub const getMouseWheelMove = GetMouseWheelMove;
 
 extern fn DrawText(text: [*:0]const u8, posX: c_int, posY: c_int, fontSize: c_int, color: Color) void;
 /// Draw text (using default font)
-pub const drawText = DrawText;
+pub fn drawText(text: [*:0]const u8, position_x: i32, position_y: i32, font_size: i32, color: Color) void {
+    DrawText(text, position_x, position_y, font_size, color);
+}
 
 extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 /// Measure string width for default font
-pub fn measureText(text: [*:0]const u8, font_size: u32) u32 {
-    return @intCast(MeasureText(text, @intCast(font_size)));
+pub fn measureText(text: [*:0]const u8, font_size: i32) i32 {
+    return MeasureText(text, @intCast(font_size));
 }
