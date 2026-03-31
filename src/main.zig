@@ -43,75 +43,18 @@ const Style = struct {
     border: f32,
 };
 
-const Button = struct {
-    text: [:0]const u8,
-    rect: rl.Rectangle,
-    background: rl.Color,
-    foreground: rl.Color,
-    padding: f32,
-    border: f32,
-    mouse_click: bool,
-    font_size: i32,
-
-    const Options = struct {
-        background: ?rl.Color = null,
-        border: ?f32 = null,
-    };
-
-    fn init(state: *State, frame_state: *FrameState, target: rl.Rectangle, text: [:0]const u8, options: Options) Button {
-        const style = state.style;
-        const border = options.border orelse style.border;
-        const width: f32 = @floatFromInt(rl.measureText(text, style.font_size));
-        const rect = rl.Rectangle{
-            .x = target.x,
-            .y = target.y,
-            .width = @max(width + (style.padding + border) * 2, target.width),
-            .height = @max(cast(f32, style.font_size) + (style.padding + border) * 2, target.height),
-        };
-        var mouse_click = false;
-        var background = options.background orelse style.background;
-        if (frame_state.mouse_position.checkCollisionRec(rect)) {
-            if (frame_state.mouse_click) mouse_click = true;
-            background = if (frame_state.mouse_down) style.down_color else style.over_color;
-        }
-        return .{
-            .text = text,
-            .rect = rect,
-            .background = background,
-            .foreground = style.foreground,
-            .border = border,
-            .mouse_click = mouse_click,
-            .padding = style.padding,
-            .font_size = style.font_size,
-        };
-    }
-
-    fn click(self: Button) bool {
-        self.rect.draw(self.background);
-        if (self.border > 0) {
-            self.rect.drawLines(self.border, self.foreground);
-        }
-        rl.drawText(
-            self.text,
-            cast(i32, self.rect.x + self.padding + self.border),
-            cast(i32, self.rect.y + self.padding + self.border),
-            self.font_size,
-            self.foreground,
-        );
-        return self.mouse_click;
-    }
-};
-
-pub fn main_tab(state: *State, frame_state: *FrameState, target: rl.Rectangle) void {
+pub fn main_tab(state: *State, frame_state: *UI, target: rl.Rectangle) void {
     _ = frame_state;
     var y = target.y;
+    // TODO: calc widhts for food struct
+    // const len = @typeInfo(Food).@"enum".fields.len;
     for (state.table.items) |food| {
         rl.drawText(food.name, cast(i32, target.x), cast(i32, y), 20, state.style.foreground);
         y += 20;
     }
 }
 
-pub fn tabs(state: *State, frame_state: *FrameState, target: rl.Rectangle) void {
+pub fn tabs(state: *State, ui: *UI, target: rl.Rectangle) void {
     const Static = struct {
         var max_width: f32 = 0;
     };
@@ -121,27 +64,25 @@ pub fn tabs(state: *State, frame_state: *FrameState, target: rl.Rectangle) void 
         Static.max_width = 0;
         for (0..state.tabs_count) |i| {
             const background = if (i == state.current_tab) state.style.tab_background else state.style.background;
-            const button = if (i == 0)
-                Button.init(
+            const result = if (i == 0)
+                ui.button(
                     state,
-                    frame_state,
                     offset.toRectangle(max_width, 0),
                     "main",
                     .{ .background = background, .border = 0 },
                 )
             else
-                Button.init(
+                ui.button(
                     state,
-                    frame_state,
                     offset.toRectangle(max_width, 0),
                     "new food",
                     .{ .background = background, .border = 0 },
                 );
-            if (button.click()) {
+            if (result) {
                 state.current_tab = i;
             }
-            Static.max_width = @max(Static.max_width, button.rect.width);
-            offset.y += button.rect.height;
+            Static.max_width = @max(Static.max_width, ui.rect.width);
+            offset.y += ui.rect.height;
         }
     }
 
@@ -154,7 +95,7 @@ pub fn tabs(state: *State, frame_state: *FrameState, target: rl.Rectangle) void 
     rect.draw(state.style.tab_background);
 
     if (state.current_tab == 0) {
-        main_tab(state, frame_state, .{
+        main_tab(state, ui, .{
             .x = rect.x + state.style.padding,
             .y = rect.y + state.style.padding,
             .width = rect.width - state.style.padding * 2,
@@ -170,28 +111,70 @@ const State = struct {
     style: Style,
 };
 
-const FrameState = struct {
+const UI = struct {
     mouse_position: rl.Vector2,
     mouse_click: bool,
     mouse_down: bool,
     allocator: std.mem.Allocator,
+    rect: rl.Rectangle,
+
+    const ButtonOptions = struct {
+        background: ?rl.Color = null,
+        border: ?f32 = null,
+    };
+
+    fn calcButtonRect(
+        target: rl.Rectangle,
+        text: [:0]const u8,
+        padding_and_border: f32,
+        font_size: i32,
+    ) rl.Rectangle {
+        const width = cast(f32, rl.measureText(text, font_size));
+        return .{
+            .x = target.x,
+            .y = target.y,
+            .width = @max(width + padding_and_border * 2, target.width),
+            .height = @max(cast(f32, font_size) + padding_and_border * 2, target.height),
+        };
+    }
+
+    fn button(self: *UI, state: *State, target: rl.Rectangle, text: [:0]const u8, options: ButtonOptions) bool {
+        const style = state.style;
+        const padding_and_border = style.padding + (options.border orelse style.border);
+        self.rect = calcButtonRect(
+            target,
+            text,
+            padding_and_border,
+            style.font_size,
+        );
+        var background = options.background orelse style.background;
+        const mouse_click = blk: {
+            if (self.mouse_position.checkCollisionRec(self.rect)) {
+                if (self.mouse_click) break :blk true;
+                background = if (self.mouse_down) style.down_color else style.over_color;
+            }
+            break :blk false;
+        };
+        self.rect.draw(background);
+        rl.drawText(
+            text,
+            cast(i32, self.rect.x + padding_and_border),
+            cast(i32, self.rect.y + padding_and_border),
+            style.font_size,
+            style.foreground,
+        );
+        return mouse_click;
+    }
 };
 
-fn ui(state: *State, frame_state: *FrameState, target: rl.Rectangle) void {
+fn main_ui(state: *State, ui: *UI, target: rl.Rectangle) void {
     const panel_height = blk: {
-        const button = Button.init(
-            state,
-            frame_state,
-            target.toVector2().toRectangleZero(),
-            "add a food",
-            .{},
-        );
-        if (button.click()) {
+        if (ui.button(state, target.toVector2().toRectangleZero(), "add a food", .{})) {
             state.tabs_count += 1;
         }
-        break :blk button.rect.height;
+        break :blk ui.rect.height;
     } + state.style.padding;
-    tabs(state, frame_state, .{
+    tabs(state, ui, .{
         .x = target.x,
         .y = target.y + panel_height,
         .width = target.width,
@@ -267,11 +250,12 @@ pub fn main(init: std.process.Init) !void {
         defer _ = arena.reset(.retain_capacity);
 
         // update
-        var frame_state = FrameState{
+        var ui = UI{
             .mouse_click = rl.isMouseButtonPressed(.left),
             .mouse_down = rl.isMouseButtonDown(.left),
             .mouse_position = rl.getMousePosition(),
             .allocator = arena.allocator(),
+            .rect = .{},
         };
         if (window.isResized()) {
             width = rl.getScreenWidth();
@@ -301,7 +285,7 @@ pub fn main(init: std.process.Init) !void {
         // draw
         rl.beginDrawing();
         rl.clearBackground(.light_gray);
-        ui(&state, &frame_state, .{
+        main_ui(&state, &ui, .{
             .x = state.style.padding,
             .y = state.style.padding,
             .width = cast(f32, width) - state.style.padding * 2,
