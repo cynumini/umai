@@ -38,6 +38,12 @@ pub const Vector2 = extern struct {
     extern fn CheckCollisionPointRec(point: Vector2, rec: Rectangle) bool;
     /// Check if point is inside rectangle
     pub const checkCollisionRec = CheckCollisionPointRec;
+
+    extern fn DrawLineV(startPos: Vector2, endPos: Vector2, color: Color) void;
+    /// Draw a line (using gl lines)
+    pub fn drawLine(self: Vector2, end_position: Vector2, color: Color) void {
+        DrawLineV(self, end_position, color);
+    }
 };
 
 /// Color, 4 components, R8G8B8A8 (32bit)
@@ -536,4 +542,10 @@ extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 /// Measure string width for default font
 pub fn measureText(text: [*:0]const u8, font_size: i32) i32 {
     return MeasureText(text, @intCast(font_size));
+}
+
+pub extern fn DrawLine(startPosX: c_int, startPosY: c_int, endPosX: c_int, endPosY: c_int, color: Color) void;
+/// Draw a line
+pub fn drawLine(start_position_x: i32, start_position_y: i32, end_position_x: i32, end_position_y: i32, color: Color) void {
+    DrawLine(start_position_x, start_position_y, end_position_x, end_position_y, color);
 }

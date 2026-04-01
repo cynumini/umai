@@ -43,18 +43,113 @@ const Style = struct {
     border: f32,
 };
 
-pub fn main_tab(state: *State, frame_state: *UI, target: rl.Rectangle) void {
-    _ = frame_state;
-    var y = target.y;
-    // TODO: calc widhts for food struct
-    // const len = @typeInfo(Food).@"enum".fields.len;
-    for (state.table.items) |food| {
-        rl.drawText(food.name, cast(i32, target.x), cast(i32, y), 20, state.style.foreground);
-        y += 20;
-    }
+pub fn calcTableRect(
+    target: rl.Rectangle,
+    table_len: usize,
+    cells_widths: []f32,
+    cells_height: f32,
+    border: f32,
+) rl.Rectangle {
+    var width: f32 = cast(f32, cells_widths.len + 1) * border;
+    for (cells_widths) |cell_width| width += cell_width;
+    return target.toVector2().toRectangle(
+        width,
+        cast(f32, table_len) * (cells_height + border) + border,
+    );
 }
 
-pub fn tabs(state: *State, ui: *UI, target: rl.Rectangle) void {
+pub fn tab_main(ui: *UI, state: *State, target: rl.Rectangle) !void {
+    const style = state.style;
+    const len = @typeInfo(Food).@"struct".fields.len;
+    var cells_widths: [len]f32 = .{0} ** len;
+    const cells_height = cast(f32, style.font_size) + style.padding * 2;
+    var table: std.ArrayList([len][:0]const u8) = .empty;
+
+    try table.append(ui.allocator, .{ "id", "created", "name", "energy" });
+
+    for (state.foods.items) |food| {
+        try table.append(ui.allocator, .{
+            try std.fmt.allocPrintSentinel(
+                ui.allocator,
+                "{}",
+                .{food.id},
+                0,
+            ),
+            try std.fmt.allocPrintSentinel(
+                ui.allocator,
+                "{}",
+                .{food.created.toSeconds()},
+                0,
+            ),
+            food.name,
+            try std.fmt.allocPrintSentinel(
+                ui.allocator,
+                "{}",
+                .{food.energy},
+                0,
+            ),
+        });
+    }
+
+    for (table.items) |row| {
+        for (row, 0..) |str, i| {
+            cells_widths[i] = @max(cast(f32, rl.measureText(
+                str,
+                style.font_size,
+            )) + style.padding * 2, cells_widths[i]);
+        }
+    }
+
+    var rect = calcTableRect(
+        target,
+        table.items.len,
+        &cells_widths,
+        cells_height,
+        style.border,
+    );
+
+    var y: i32 = @intFromFloat(target.y + style.border);
+    for (table.items, 0..) |row, i| {
+        var x: i32 = @intFromFloat(target.x + style.border);
+        for (row, 0..) |line, j| {
+            rl.drawText(
+                line,
+                x + cast(i32, style.padding),
+                y + cast(i32, style.padding),
+                style.font_size,
+                style.foreground,
+            );
+            if (i == 0) {
+                rl.drawLine(
+                    x + cast(i32, cells_widths[j] + style.border),
+                    @intFromFloat(target.y),
+                    x + cast(i32, cells_widths[j] + style.border),
+                    @intFromFloat(target.y + rect.height),
+                    style.foreground,
+                );
+            }
+            x += @intFromFloat(cells_widths[j] + style.border);
+        }
+        rl.drawLine(
+            @intFromFloat(target.x),
+            y + style.font_size + cast(i32, style.padding * 2),
+            @intFromFloat(target.x + rect.width),
+            y + style.font_size + cast(i32, style.padding * 2),
+            style.foreground,
+        );
+        y += cast(i32, cells_height + state.style.border);
+    }
+    rect.drawLines(style.border, style.foreground);
+}
+
+pub fn tab_new_food(ui: *UI, state: *State, target: rl.Rectangle) void {
+    _ = ui;
+    _ = state;
+
+    target.toVector2().toRectangle(256, 256).draw(.black);
+}
+
+pub fn tabs(state: *State, ui: *UI, target: rl.Rectangle) !void {
     const Static = struct {
         var max_width: f32 = 0;
     };
@@ -86,7 +181,7 @@ pub fn tabs(state: *State, ui: *UI, target: rl.Rectangle) void {
         }
     }
 
-    const rect: rl.Rectangle = .{
+    var rect: rl.Rectangle = .{
         .x = target.x + Static.max_width,
         .y = target.y,
         .width = target.width - Static.max_width,
@@ -94,20 +189,24 @@ pub fn tabs(state: *State, ui: *UI, target: rl.Rectangle) void {
     };
     rect.draw(state.style.tab_background);
 
+    rect = .{
+        .x = rect.x + state.style.padding,
+        .y = rect.y + state.style.padding,
+        .width = rect.width - state.style.padding * 2,
+        .height = rect.height - state.style.padding * 2,
+    };
+
     if (state.current_tab == 0) {
-        main_tab(state, ui, .{
-            .x = rect.x + state.style.padding,
-            .y = rect.y + state.style.padding,
-            .width = rect.width - state.style.padding * 2,
-            .height = rect.height - state.style.padding * 2,
-        });
+        try tab_main(ui, state, rect);
+    } else {
+        tab_new_food(ui, state, rect);
     }
 }
 
 const State = struct {
     tabs_count: usize,
     current_tab: usize,
-    table: std.ArrayList(Food),
+    foods: std.ArrayList(Food),
     style: Style,
 };
 
@@ -118,12 +217,12 @@ const UI = struct {
     allocator: std.mem.Allocator,
     rect: rl.Rectangle,
 
-    const ButtonOptions = struct {
+    const LabelOptions = struct {
         background: ?rl.Color = null,
         border: ?f32 = null,
     };
 
-    fn calcButtonRect(
+    fn calcLabelRect(
         target: rl.Rectangle,
         text: [:0]const u8,
         padding_and_border: f32,
@@ -138,10 +237,18 @@ const UI = struct {
         };
     }
 
-    fn button(self: *UI, state: *State, target: rl.Rectangle, text: [:0]const u8, options: ButtonOptions) bool {
+    // TODO: Decouple button from label
+    fn label(
+        self: *UI,
+        state: *State,
+        target: rl.Rectangle,
+        text: [:0]const u8,
+        options: LabelOptions,
+    ) bool {
         const style = state.style;
-        const padding_and_border = style.padding + (options.border orelse style.border);
-        self.rect = calcButtonRect(
+        const border = options.border orelse style.border;
+        const padding_and_border = style.padding + border;
+        self.rect = calcLabelRect(
             target,
             text,
             padding_and_border,
@@ -156,6 +263,9 @@ const UI = struct {
             break :blk false;
         };
         self.rect.draw(background);
+        if (border > 0) {
+            self.rect.drawLines(border, style.foreground);
+        }
         rl.drawText(
             text,
             cast(i32, self.rect.x + padding_and_border),
@@ -165,16 +275,26 @@ const UI = struct {
         );
         return mouse_click;
     }
+
+    fn button(
+        self: *UI,
+        state: *State,
+        target: rl.Rectangle,
+        text: [:0]const u8,
+        options: LabelOptions,
+    ) bool {
+        return self.label(state, target, text, options);
+    }
 };
 
-fn main_ui(state: *State, ui: *UI, target: rl.Rectangle) void {
+fn main_ui(state: *State, ui: *UI, target: rl.Rectangle) !void {
     const panel_height = blk: {
         if (ui.button(state, target.toVector2().toRectangleZero(), "add a food", .{})) {
             state.tabs_count += 1;
         }
         break :blk ui.rect.height;
     } + state.style.padding;
-    tabs(state, ui, .{
+    try tabs(state, ui, .{
         .x = target.x,
         .y = target.y + panel_height,
         .width = target.width,
@@ -211,7 +331,7 @@ pub fn main(init: std.process.Init) !void {
     var state = State{
         .current_tab = 0,
         .tabs_count = 1,
-        .table = .empty,
+        .foods = .empty,
         .style = Style{
             .font_size = 20,
             .foreground = .black,
@@ -225,10 +345,10 @@ pub fn main(init: std.process.Init) !void {
     };
 
     defer {
-        for (state.table.items) |food| {
+        for (state.foods.items) |food| {
             food.deinit(init.gpa);
         }
-        state.table.deinit(init.gpa);
+        state.foods.deinit(init.gpa);
     }
 
     //var scroll: i32 = 0;
@@ -264,15 +384,15 @@ pub fn main(init: std.process.Init) !void {
 
         if (database_need_update) {
             // clear table
-            for (state.table.items) |food| food.deinit(init.gpa);
-            state.table.clearRetainingCapacity();
+            for (state.foods.items) |food| food.deinit(init.gpa);
+            state.foods.clearRetainingCapacity();
             // end clear table
             database_need_update = false;
             const stmt = database.prepare("SELECT * FROM food");
             defer stmt.deinit();
             var rc = stmt.step();
             while (rc != .done) : (rc = stmt.step()) {
-                try state.table.append(init.gpa, try Food.init(
+                try state.foods.append(init.gpa, try Food.init(
                     init.gpa,
                     @intCast(stmt.columnInt64(0)),
                     stmt.columnInt64(1),
@@ -285,7 +405,7 @@ pub fn main(init: std.process.Init) !void {
         // draw
         rl.beginDrawing();
         rl.clearBackground(.light_gray);
-        main_ui(&state, &ui, .{
+        try main_ui(&state, &ui, .{
             .x = state.style.padding,
             .y = state.style.padding,
             .width = cast(f32, width) - state.style.padding * 2,
