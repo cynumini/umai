@@ -36,6 +36,7 @@ const Style = struct {
     font_size: i32,
     foreground: rl.Color,
     background: rl.Color,
+    inactive_foreground: rl.Color,
     over_color: rl.Color,
     down_color: rl.Color,
     tab_background: rl.Color,
@@ -143,10 +144,10 @@ pub fn tab_main(ui: *UI, state: *State, target: rl.Rectangle) !void {
 }
 
 pub fn tab_new_food(ui: *UI, state: *State, target: rl.Rectangle) void {
-    _ = ui;
-    _ = state;
-
-    target.toVector2().toRectangle(256, 256).draw(.black);
+    ui.label(state, target, "Name");
+    var rect = target;
+    rect.x += 100;
+    ui.input(state, rect, state.name, "enter food name");
 }
 
 pub fn tabs(state: *State, ui: *UI, target: rl.Rectangle) !void {
@@ -208,6 +209,15 @@ const State = struct {
     current_tab: usize,
     foods: std.ArrayList(Food),
     style: Style,
+    allocator: std.mem.Allocator,
+    name: std.ArrayList(u8),
+
+    fn deinit(self: *State) void {
+        for (self.foods.items) |food| {
+            food.deinit(self.allocator);
+        }
+        self.foods.deinit(self.allocator);
+    }
 };
 
 const UI = struct {
@@ -217,12 +227,44 @@ const UI = struct {
     allocator: std.mem.Allocator,
     rect: rl.Rectangle,
 
-    const LabelOptions = struct {
-        background: ?rl.Color = null,
-        border: ?f32 = null,
-    };
+    fn label(
+        self: *UI,
+        state: *State,
+        target: rl.Rectangle,
+        text: [:0]const u8,
+    ) void {
+        const style = state.style;
+        _ = self;
+        rl.drawText(
+            text,
+            @intFromFloat(target.x),
+            @intFromFloat(target.y),
+            style.font_size,
+            style.foreground,
+        );
+    }
 
-    fn calcLabelRect(
+    fn input(
+        self: *UI,
+        state: *State,
+        target: rl.Rectangle,
+        buffer: std.ArrayList(u8),
+        placeholder: [:0]const u8,
+    ) void {
+        _ = self;
+        const style = state.style;
+        if (buffer.items.len == 0) {
+            rl.drawText(
+                placeholder,
+                @intFromFloat(target.x),
+                @intFromFloat(target.y),
+                style.font_size,
+                style.inactive_foreground,
+            );
+        }
+    }
+
+    fn calcButtonRect(
         target: rl.Rectangle,
         text: [:0]const u8,
         padding_and_border: f32,
@@ -237,18 +279,22 @@ const UI = struct {
         };
     }
 
-    // TODO: Decouple button from label
-    fn label(
+    const ButtonOptions = struct {
+        background: ?rl.Color = null,
+        border: ?f32 = null,
+    };
+
+    fn button(
         self: *UI,
         state: *State,
         target: rl.Rectangle,
         text: [:0]const u8,
-        options: LabelOptions,
+        options: ButtonOptions,
     ) bool {
         const style = state.style;
         const border = options.border orelse style.border;
         const padding_and_border = style.padding + border;
-        self.rect = calcLabelRect(
+        self.rect = calcButtonRect(
             target,
             text,
             padding_and_border,
@@ -274,16 +320,6 @@ const UI = struct {
             style.foreground,
         );
         return mouse_click;
-    }
-
-    fn button(
-        self: *UI,
-        state: *State,
-        target: rl.Rectangle,
-        text: [:0]const u8,
-        options: LabelOptions,
-    ) bool {
-        return self.label(state, target, text, options);
     }
 };
 
@@ -332,9 +368,12 @@ pub fn main(init: std.process.Init) !void {
         .current_tab = 0,
         .tabs_count = 1,
         .foods = .empty,
+        .allocator = init.gpa,
+        .name = .empty,
         .style = Style{
             .font_size = 20,
             .foreground = .black,
+            .inactive_foreground = .gray,
             .background = .gray,
             .tab_background = .white,
             .padding = 8,
@@ -343,13 +382,7 @@ pub fn main(init: std.process.Init) !void {
             .down_color = .dark_gray,
         },
     };
-
-    defer {
-        for (state.foods.items) |food| {
-            food.deinit(init.gpa);
-        }
-        state.foods.deinit(init.gpa);
-    }
+    defer state.deinit();
 
     //var scroll: i32 = 0;
     //var tab_index: usize = 0;
