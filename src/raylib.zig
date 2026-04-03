@@ -2,9 +2,6 @@ const std = @import("std");
 
 /// Vector2, 2 components
 pub const Vector2 = extern struct {
-    /// Vector with components value 0.0f
-    pub const zero = Vector2{ .x = 0, .y = 0 };
-
     /// Vector x component
     x: f32 = 0,
     /// Vector y component
@@ -37,7 +34,9 @@ pub const Vector2 = extern struct {
 
     extern fn CheckCollisionPointRec(point: Vector2, rec: Rectangle) bool;
     /// Check if point is inside rectangle
-    pub const checkCollisionRec = CheckCollisionPointRec;
+    pub fn checkCollisionRec(self: Vector2, rect: Rectangle) bool {
+        return self.CheckCollisionPointRec(rect);
+    }
 
     extern fn DrawLineV(startPos: Vector2, endPos: Vector2, color: Color) void;
     /// Draw a line (using gl lines)
@@ -112,6 +111,12 @@ pub const Color = extern struct {
     pub const ray_white: Color = .{ .r = 245, .g = 245, .b = 245, .a = 255 };
 };
 
+extern fn ClearBackground(color: Color) void;
+/// Set background color (framebuffer clear color)
+pub fn clearBackground(color: Color) void {
+    ClearBackground(color);
+}
+
 /// Rectangle, 4 components
 pub const Rectangle = extern struct {
     /// Rectangle top-left corner position x
@@ -155,7 +160,9 @@ pub const Texture = extern struct {
 
     pub extern fn DrawTextureRec(texture: Texture, source: Rectangle, position: Vector2, tint: Color) void;
     /// Draw a part of a texture defined by a rectangle
-    pub const drawRec = DrawTextureRec;
+    pub fn drawRec(self: Texture, source: Rectangle, position: Vector2, tint: Color) void {
+        self.DrawTextureRec(source, position, tint);
+    }
 };
 
 /// RenderTexture, fbo for texture rendering
@@ -169,26 +176,32 @@ pub const RenderTexture = extern struct {
 
     extern fn BeginTextureMode(target: RenderTexture) void;
     /// Begin drawing to render texture
-    pub const begin = BeginTextureMode;
+    pub fn beginMode(self: RenderTexture) void {
+        self.BeginTextureMode();
+    }
 
     extern fn EndTextureMode() void;
     /// Ends drawing to render texture
-    pub fn end(_: RenderTexture) void {
+    pub fn endMode() void {
         EndTextureMode();
     }
 
     pub extern fn LoadRenderTexture(width: c_int, height: c_int) RenderTexture;
     /// Load texture for rendering (framebuffer)
-    pub const init = LoadRenderTexture;
+    pub fn load(width: i32, height: i32) RenderTexture {
+        return LoadRenderTexture(width, height);
+    }
 
     pub extern fn UnloadRenderTexture(target: RenderTexture) void;
     /// Unload render texture from GPU memory (VRAM)
-    pub const deinit = UnloadRenderTexture;
+    pub fn unload(self: RenderTexture) void {
+        self.UnloadRenderTexture();
+    }
 };
 
 /// System/Window config flags
 /// By default all flags are set to false
-pub const ConfigFlags = packed struct(c_int) {
+pub const ConfigFlags = packed struct(c_uint) {
     _padding0: u1 = 0,
     fullscreen_mode: bool = false,
     window_resizable: bool = false,
@@ -449,44 +462,39 @@ pub const KeyboardKey = enum(c_int) {
 pub const Window = struct {
     extern fn InitWindow(width: c_int, height: c_int, title: [*:0]const u8) void;
     /// Initialize window and OpenGL context
-    pub fn init(width: u32, height: u32, title: [:0]const u8) Window {
-        InitWindow(@intCast(width), @intCast(height), title.ptr);
-        return .{};
+    pub fn init(width: i32, height: i32, title: [:0]const u8) void {
+        InitWindow(width, height, title.ptr);
     }
 
     extern fn CloseWindow() void;
     /// Close window and unload OpenGL context
-    pub fn deinit(_: Window) void {
+    pub fn close() void {
         CloseWindow();
     }
 
     extern fn WindowShouldClose() bool;
     /// Check if application should close (KEY_ESCAPE pressed or windows close icon clicked)
-    pub fn shouldClose(_: Window) bool {
+    pub fn shouldClose() bool {
         return WindowShouldClose();
     }
 
     pub extern fn IsWindowResized() bool;
     /// Check if window has been resized last frame
-    pub fn isResized(_: Window) bool {
+    pub fn isResized() bool {
         return IsWindowResized();
     }
 };
 
 extern fn GetScreenWidth() c_int;
 /// Get current screen width
-pub fn getScreenWidth() u32 {
-    return @intCast(GetScreenWidth());
+pub fn getScreenWidth() i32 {
+    return GetScreenWidth();
 }
 extern fn GetScreenHeight() c_int;
 /// Get current screen height
-pub fn getScreenHeight() u32 {
-    return @intCast(GetScreenHeight());
+pub fn getScreenHeight() i32 {
+    return GetScreenHeight();
 }
-
-extern fn ClearBackground(color: Color) void;
-/// Set background color (framebuffer clear color)
-pub const clearBackground = ClearBackground;
 
 extern fn BeginDrawing() void;
 /// Setup canvas (framebuffer) to start drawing
@@ -498,39 +506,47 @@ pub const endDrawing = EndDrawing;
 
 extern fn SetTargetFPS(fps: c_int) void;
 /// Set target FPS (maximum)
-pub fn setTargetFPS(fps: u32) void {
-    SetTargetFPS(@intCast(fps));
+pub fn setTargetFPS(fps: i32) void {
+    SetTargetFPS(fps);
 }
 
-const MouseButton = enum(c_int) {
-    left = 0,
-    right = 1,
-    middle = 2,
-    side = 3,
-    extra = 4,
-    forward = 5,
-    back = 6,
+pub const Mouse = struct {
+    const Button = enum(c_int) {
+        left = 0,
+        right = 1,
+        middle = 2,
+        side = 3,
+        extra = 4,
+        forward = 5,
+        back = 6,
+    };
+
+    extern fn IsMouseButtonPressed(button: c_int) bool;
+    /// Check if a mouse button has been pressed once
+    pub fn isButtonPressed(button: Button) bool {
+        return IsMouseButtonPressed(@intFromEnum(button));
+    }
+
+    extern fn IsMouseButtonDown(button: c_int) bool;
+    /// Check if a mouse button is being pressed
+    pub fn isButtonDown(button: Button) bool {
+        return IsMouseButtonDown(@intFromEnum(button));
+    }
+
+    extern fn IsMouseButtonReleased(button: c_int) bool;
+    /// Check if a mouse button has been released once
+    pub fn isButtonReleased(button: Button) bool {
+        return IsMouseButtonReleased(@intFromEnum(button));
+    }
+
+    extern fn GetMousePosition() Vector2;
+    /// Get mouse position XY
+    pub const getPosition = GetMousePosition;
+
+    extern fn GetMouseWheelMove() f32;
+    /// Get mouse wheel movement for X or Y, whichever is larger
+    pub const getWheelMove = GetMouseWheelMove;
 };
-
-extern fn IsMouseButtonPressed(button: c_int) bool;
-/// Check if a mouse button has been pressed once
-pub fn isMouseButtonPressed(button: MouseButton) bool {
-    return IsMouseButtonPressed(@intFromEnum(button));
-}
-
-extern fn IsMouseButtonDown(button: c_int) bool;
-/// Check if a mouse button is being pressed
-pub fn isMouseButtonDown(button: MouseButton) bool {
-    return IsMouseButtonDown(@intFromEnum(button));
-}
-
-extern fn GetMousePosition() Vector2;
-/// Get mouse position XY
-pub const getMousePosition = GetMousePosition;
-
-extern fn GetMouseWheelMove() f32;
-/// Get mouse wheel movement for X or Y, whichever is larger
-pub const getMouseWheelMove = GetMouseWheelMove;
 
 extern fn DrawText(text: [*:0]const u8, posX: c_int, posY: c_int, fontSize: c_int, color: Color) void;
 /// Draw text (using default font)
@@ -541,7 +557,7 @@ pub fn drawText(text: [*:0]const u8, position_x: i32, position_y: i32, font_size
 extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
 /// Measure string width for default font
 pub fn measureText(text: [*:0]const u8, font_size: i32) i32 {
-    return MeasureText(text, @intCast(font_size));
+    return MeasureText(text, font_size);
 }
 
 pub extern fn DrawLine(startPosX: c_int, startPosY: c_int, endPosX: c_int, endPosY: c_int, color: Color) void;
