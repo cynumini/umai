@@ -32,6 +32,13 @@ pub const Vector2 = extern struct {
         };
     }
 
+    pub fn subtract(self: Vector2, other: Vector2) Vector2 {
+        return .{
+            .x = self.x - other.x,
+            .y = self.y - other.y,
+        };
+    }
+
     extern fn CheckCollisionPointRec(point: Vector2, rec: Rectangle) bool;
     /// Check if point is inside rectangle
     pub fn checkCollisionRec(self: Vector2, rect: Rectangle) bool {
@@ -564,4 +571,10 @@ pub extern fn DrawLine(startPosX: c_int, startPosY: c_int, endPosX: c_int, endPo
 /// Draw a line
 pub fn drawLine(start_position_x: i32, start_position_y: i32, end_position_x: i32, end_position_y: i32, color: Color) void {
     DrawLine(start_position_x, start_position_y, end_position_x, end_position_y, color);
+}
+
+extern fn GetCharPressed() c_int;
+/// Get char pressed (unicode), call it multiple times for chars queued, returns 0 when the queue is empty
+pub fn getCharPressed() i32 {
+    return GetCharPressed();
 }
