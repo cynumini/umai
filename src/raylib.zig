@@ -578,3 +578,8 @@ extern fn GetCharPressed() c_int;
 pub fn getCharPressed() i32 {
     return GetCharPressed();
 }
+
+extern fn IsKeyReleased(key: c_int) bool;
+pub fn isKeyReleased(key: KeyboardKey) bool {
+    return IsKeyReleased(@intFromEnum(key));
+}

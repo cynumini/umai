@@ -1,4 +1,5 @@
 const std = @import("std");
+pub const __helpers = @import("std").zig.c_translation.helpers;
 
 const Result = enum(c_int) {
     ok = 0,
@@ -6,14 +7,14 @@ const Result = enum(c_int) {
 
 pub const sqlite3_stmt = opaque {
     extern fn sqlite3_step(?*sqlite3_stmt) c_int;
-    pub extern fn sqlite3_column_count(pStmt: ?*sqlite3_stmt) c_int;
-    pub extern fn sqlite3_column_type(?*sqlite3_stmt, iCol: c_int) c_int;
-    pub extern fn sqlite3_column_name(?*sqlite3_stmt, N: c_int) [*:0]const u8;
-    pub extern fn sqlite3_column_int(?*sqlite3_stmt, iCol: c_int) i32;
-    pub extern fn sqlite3_column_int64(?*sqlite3_stmt, iCol: c_int) i64;
-    pub extern fn sqlite3_column_text(?*sqlite3_stmt, iCol: c_int) [*:0]const u8;
-    pub extern fn sqlite3_column_double(?*sqlite3_stmt, iCol: c_int) f64;
-    pub extern fn sqlite3_finalize(pStmt: ?*sqlite3_stmt) c_int;
+    extern fn sqlite3_column_count(pStmt: ?*sqlite3_stmt) c_int;
+    extern fn sqlite3_column_type(?*sqlite3_stmt, iCol: c_int) c_int;
+    extern fn sqlite3_column_name(?*sqlite3_stmt, N: c_int) [*:0]const u8;
+    extern fn sqlite3_column_int(?*sqlite3_stmt, iCol: c_int) i32;
+    extern fn sqlite3_column_int64(?*sqlite3_stmt, iCol: c_int) i64;
+    extern fn sqlite3_column_text(?*sqlite3_stmt, iCol: c_int) [*:0]const u8;
+    extern fn sqlite3_column_double(?*sqlite3_stmt, iCol: c_int) f64;
+    extern fn sqlite3_finalize(pStmt: ?*sqlite3_stmt) c_int;
 };
 
 pub const sqlite3 = opaque {
@@ -75,6 +76,37 @@ pub const Statement = struct {
 
     pub fn columnDouble(self: Statement, column: usize) f64 {
         return self.stmt.sqlite3_column_double(@intCast(column));
+    }
+
+    pub const sqlite3_destructor_type = ?*const fn (?*anyopaque) callconv(.c) void;
+
+    const Lifetime = enum(c_int) {
+        static = 0,
+        transient = 1,
+    };
+
+    extern fn sqlite3_bind_text(?*sqlite3_stmt, c_int, [*]const u8, c_int, ?*const fn (?*anyopaque) callconv(.c) void) c_int;
+    pub fn bindText(self: Statement, index: i32, value: []const u8, lifetime: Lifetime) !void {
+        const result = sqlite3_bind_text(
+            self.stmt,
+            index,
+            value.ptr,
+            @intCast(value.len),
+            __helpers.cast(sqlite3_destructor_type, @intFromEnum(lifetime)),
+        );
+        std.debug.assert(result == @intFromEnum(Result.ok));
+    }
+
+    extern fn sqlite3_bind_int64(?*sqlite3_stmt, c_int, i64) c_int;
+    pub fn bindInt64(self: Statement, index: i32, value: i64) !void {
+        const result = sqlite3_bind_int64(self.stmt, index, value);
+        std.debug.assert(result == @intFromEnum(Result.ok));
+    }
+
+    extern fn sqlite3_bind_double(?*sqlite3_stmt, c_int, f64) c_int;
+    pub fn bindDouble(self: Statement, index: i32, value: f64) !void {
+        const result = sqlite3_bind_double(self.stmt, index, value);
+        std.debug.assert(result == @intFromEnum(Result.ok));
     }
 };
 

@@ -19,13 +19,24 @@ const UI = struct {
     var mouse_released = false;
     var direction: Direction = .down;
     var origin: Origin = .left_top;
+    var arena: std.heap.ArenaAllocator = undefined;
+    var allocator: std.mem.Allocator = undefined;
 
-    fn update() void {
-        UI.offset = .{};
-        UI.sizes = .{};
+    fn init() void {
+        UI.arena = .init(std.heap.page_allocator);
+        UI.allocator = arena.allocator();
+    }
+
+    fn frameStart() void {
         UI.mouse_position = rl.Mouse.getPosition();
         UI.mouse_down = rl.Mouse.isButtonDown(.left);
         UI.mouse_released = rl.Mouse.isButtonReleased(.left);
+    }
+
+    fn frameEnd() void {
+        UI.offset = .{};
+        UI.sizes = .{};
+        _ = UI.arena.reset(.retain_capacity);
     }
 
     const StartOptions = struct {
@@ -172,9 +183,23 @@ const InputOptions = struct {
     border: f32 = 1,
 };
 
-fn input(allocator: std.mem.Allocator, placholder: [:0]const u8, text: *std.ArrayList(u8), width: f32, options: InputOptions) void {
+fn input(
+    allocator: std.mem.Allocator,
+    placholder: [:0]const u8,
+    text: *std.ArrayList(u8),
+    width: f32,
+    options: InputOptions,
+) !void {
+    const input_text: [:0]const u8, const foreground: rl.Color = blk: {
+        if (text.items.len > 0) {
+            break :blk .{ try UI.allocator.dupeSentinel(u8, text.items, 0), .black };
+        } else {
+            break :blk .{ placholder, .gray };
+        }
+    };
+
     const self = Label.start(
-        placholder,
+        input_text,
         width,
         options.padding,
         options.border,
@@ -182,11 +207,18 @@ fn input(allocator: std.mem.Allocator, placholder: [:0]const u8, text: *std.Arra
         options.child_gap,
     );
 
-    // var char = rl.getCharPressed();
-    // while (rl.getCharPressed())
-    _ = allocator;
-    _ = text;
-    self.end(options.background, .gray);
+    if (UI.mouse_position.checkCollisionRec(self.rect)) {
+        var char = rl.getCharPressed();
+        while (char != 0) : (char = rl.getCharPressed()) {
+            try text.append(allocator, @intCast(char));
+        }
+
+        if (rl.isKeyReleased(.backspace)) {
+            _ = text.pop();
+        }
+    }
+
+    self.end(options.background, foreground);
 }
 
 const Tab = struct {
@@ -200,6 +232,8 @@ const Tab = struct {
 };
 
 pub fn main(init: std.process.Init) !void {
+    UI.init();
+
     rl.ConfigFlags.set(.{ .window_resizable = true });
 
     var width: i32 = 1280;
@@ -257,12 +291,13 @@ pub fn main(init: std.process.Init) !void {
     defer database.deinit();
 
     while (!rl.Window.shouldClose()) {
+        UI.frameStart();
+        defer UI.frameEnd();
         // update
         if (rl.Window.isResized()) {
             width = rl.getScreenWidth();
             height = rl.getScreenHeight();
         }
-        UI.update();
         if (database_need_update) {
             // clear
             for (foods.items) |food| for (0..food.len) |i| init.gpa.free(food[i]);
@@ -339,7 +374,27 @@ pub fn main(init: std.process.Init) !void {
                     .width = max_width,
                 })) current_tab = i;
             } else {
-                if (button("new food", .{
+                const name = tabs.items[i - 1].name.items;
+                const text: [:0]const u8 = blk: {
+                    var len = name.len;
+                    if (len > 0) {
+                        var text: []u8 = try UI.allocator.dupeSentinel(u8, name, 0);
+                        while (true) {
+                            const text_width = rl.measureText(
+                                @ptrCast(text),
+                                20,
+                            ) + padding * 2;
+                            if (text_width > max_width) {
+                                len -= 1;
+                                text[len] = 0;
+                            } else break;
+                        }
+                        break :blk @ptrCast(text);
+                    }
+                    break :blk "new food";
+                };
+
+                if (button(text, .{
                     .border = 0,
                     .background = background,
                     .width = max_width,
@@ -409,49 +464,46 @@ pub fn main(init: std.process.Init) !void {
                 .x = tab_background_rect.x + 128,
                 .y = tab_background_rect.y + 8,
             }, .{});
-            input(
+            try input(
                 init.gpa,
                 "enter name of food",
                 &tabs.items[current_tab - 1].name,
                 inputs_width,
                 .{},
             );
-            input(
+            try input(
                 init.gpa,
                 "enter energy value of food",
                 &tabs.items[current_tab - 1].energy,
                 inputs_width,
                 .{},
             );
-
-            // const rect: rl.Rectangle = .{
-            //     .x = tab_background_rect.x + padding,
-            //     .y = tab_background_rect.y + padding,
-            // };
-            // var y: f32 = rect.y;
-            // inline for (&.{ "name:", "energy:" }) |field| {
-            //     rl.drawText(
-            //         field,
-            //         @intFromFloat(rect.x),
-            //         @intFromFloat(y + padding + margin),
-            //         font_size,
-            //         .black,
-            //     );
-            //     (rl.Rectangle{
-            //         .x = rect.x + 100,
-            //         .y = y,
-            //         .width = 256,
-            //         .height = font_size + (padding + margin) * 2,
-            //     }).drawLines(1, .black);
-
-            //     y += font_size + (padding + margin) * 2 + padding;
-            // }
             UI.start(.{
                 .x = tab_background_rect.x + tab_background_rect.width - 8,
                 .y = tab_background_rect.y + tab_background_rect.height - 8,
             }, .{ .origin = .right_bottom, .direction = .left });
-            _ = button("add", .{});
-            _ = button("cancel", .{});
+            if (button("add", .{})) {
+                const i = current_tab - 1;
+                const name = tabs.items[i].name.items;
+                const raw_energy = tabs.items[i].energy.items;
+                const energy = try std.fmt.parseFloat(f32, raw_energy);
+                const stmt = database.prepare("INSERT INTO food (created, name, energy) VALUES (?, ?, ?)");
+                defer stmt.deinit();
+                try stmt.bindInt64(1, std.Io.Clock.real.now(init.io).toSeconds());
+                try stmt.bindText(2, name, .static);
+                try stmt.bindDouble(3, energy);
+                std.debug.assert(stmt.step() == .done);
+                var tab = tabs.orderedRemove(i);
+                tab.deinit(init.gpa);
+                current_tab -= 1;
+                database_need_update = true;
+            }
+            if (button("cancel", .{})) {
+                var tab = tabs.orderedRemove(current_tab - 1);
+                tab.deinit(init.gpa);
+                current_tab -= 1;
+                database_need_update = true;
+            }
         }
         rl.endDrawing();
     }
