@@ -52,6 +52,11 @@ const UI = struct {
     }
 };
 
+const Style = struct {
+    const padding = 6;
+    const child_gap = 6;
+};
+
 fn startElement(sizes: rl.Vector2, child_gap: f32) struct { rl.Vector2, rl.Rectangle } {
     const offset: rl.Vector2 = switch (UI.direction) {
         .down => .{
@@ -125,8 +130,8 @@ const LabelOptions = struct {
     background: ?rl.Color = null,
     border: f32 = 0,
     width: ?f32 = null,
-    padding: f32 = 8,
-    child_gap: f32 = 8,
+    padding: f32 = Style.padding,
+    child_gap: f32 = Style.child_gap,
     font_size: i32 = 20,
 };
 
@@ -146,8 +151,8 @@ const ButtonOptions = struct {
     background: rl.Color = .gray,
     border: f32 = 1,
     width: ?f32 = null,
-    padding: f32 = 8,
-    child_gap: f32 = 8,
+    padding: f32 = Style.padding,
+    child_gap: f32 = Style.child_gap,
     font_size: i32 = 20,
 };
 
@@ -176,9 +181,9 @@ fn button(text: [:0]const u8, options: ButtonOptions) bool {
 }
 
 const InputOptions = struct {
-    background: ?rl.Color = null,
-    padding: f32 = 8,
-    child_gap: f32 = 8,
+    background: rl.Color = .white,
+    padding: f32 = Style.padding,
+    child_gap: f32 = Style.child_gap,
     font_size: i32 = 20,
     border: f32 = 1,
 };
@@ -189,7 +194,7 @@ fn input(
     text: *std.ArrayList(u8),
     width: f32,
     options: InputOptions,
-) !void {
+) !bool {
     const input_text: [:0]const u8, const foreground: rl.Color = blk: {
         if (text.items.len > 0) {
             break :blk .{ try UI.allocator.dupeSentinel(u8, text.items, 0), .black };
@@ -206,19 +211,20 @@ fn input(
         options.font_size,
         options.child_gap,
     );
-
+    var edited = false;
     if (UI.mouse_position.checkCollisionRec(self.rect)) {
         var char = rl.getCharPressed();
         while (char != 0) : (char = rl.getCharPressed()) {
             try text.append(allocator, @intCast(char));
+            edited = true;
         }
 
         if (rl.isKeyReleased(.backspace)) {
             _ = text.pop();
         }
     }
-
     self.end(options.background, foreground);
+    return edited;
 }
 
 const Tab = struct {
@@ -231,7 +237,91 @@ const Tab = struct {
     }
 };
 
+const State = struct {
+    const Database = struct {
+        db: sqlite3.Database,
+        need_update: bool = true,
+
+        fn init(io: std.Io) !Database {
+            const path: [:0]const u8 = "database.db";
+            const is_file_exists = blk: {
+                std.Io.Dir.cwd().access(
+                    io,
+                    path,
+                    .{},
+                ) catch |err| switch (err) {
+                    error.FileNotFound => break :blk false,
+                    else => return err,
+                };
+                break :blk true;
+            };
+            var db = sqlite3.Database.init(path);
+            if (!is_file_exists) {
+                const sql =
+                    \\CREATE TABLE "food" (
+                    \\    "id"      INTEGER NOT NULL UNIQUE,
+                    \\    "created" INTEGER NOT NULL,
+                    \\    "name"    TEXT NOT NULL,
+                    \\    "energy"  REAL NOT NULL,
+                    \\    PRIMARY KEY("id")
+                    \\) STRICT;
+                ;
+                db.exec(sql);
+            }
+            return .{ .db = db };
+        }
+
+        fn deinit(self: *Database) void {
+            self.db.deinit();
+        }
+    };
+    const Edit = struct {
+        name: std.ArrayList(u8) = .empty,
+        energy: std.ArrayList(u8) = .empty,
+
+        fn deinit(self: *Edit, allocator: std.mem.Allocator) void {
+            self.name.deinit(allocator);
+            self.energy.deinit(allocator);
+        }
+    };
+
+    edit: Edit,
+    database: Database,
+
+    fn init(io: std.Io) !State {
+        return .{ .edit = .{}, .database = try .init(io) };
+    }
+
+    fn deinit(self: *State, allocator: std.mem.Allocator) void {
+        self.edit.deinit(allocator);
+    }
+};
+
+fn uiEditPanel(allocator: std.mem.Allocator, rect: rl.Rectangle, state: *State) !void {
+    rect.draw(.light_gray);
+    UI.start(rect.toVector2().addValue(Style.padding), .{});
+    label("name", .{});
+    if (try input(
+        allocator,
+        "",
+        &state.edit.name,
+        rect.width - Style.padding,
+        .{},
+    )) {}
+    label("energy", .{});
+    if (try input(
+        allocator,
+        "",
+        &state.edit.energy,
+        rect.width - Style.padding,
+        .{},
+    )) {}
+}
+
 pub fn main(init: std.process.Init) !void {
+    var state: State = try .init(init.io);
+    defer state.deinit(init.gpa);
+
     UI.init();
 
     rl.ConfigFlags.set(.{ .window_resizable = true });
@@ -251,6 +341,7 @@ pub fn main(init: std.process.Init) !void {
         foods.deinit(init.gpa);
     }
     var current_tab: usize = 0;
+    var table_current_row: ?usize = null;
 
     var tabs: std.ArrayList(Tab) = .empty;
     defer {
@@ -260,36 +351,6 @@ pub fn main(init: std.process.Init) !void {
         tabs.deinit(init.gpa);
     }
 
-    var database, var database_need_update = blk: {
-        const path: [:0]const u8 = "database.db";
-        const is_file_exists = blk_exist: {
-            std.Io.Dir.cwd().access(
-                init.io,
-                path,
-                .{},
-            ) catch |err| switch (err) {
-                error.FileNotFound => break :blk_exist false,
-                else => return err,
-            };
-            break :blk_exist true;
-        };
-        var result = sqlite3.Database.init(path);
-        if (!is_file_exists) {
-            const sql =
-                \\CREATE TABLE "food" (
-                \\    "id"      INTEGER NOT NULL UNIQUE,
-                \\    "created" INTEGER NOT NULL,
-                \\    "name"    TEXT NOT NULL,
-                \\    "energy"  REAL NOT NULL,
-                \\    PRIMARY KEY("id")
-                \\) STRICT;
-            ;
-            result.exec(sql);
-        }
-        break :blk .{ result, true };
-    };
-    defer database.deinit();
-
     while (!rl.Window.shouldClose()) {
         UI.frameStart();
         defer UI.frameEnd();
@@ -298,19 +359,19 @@ pub fn main(init: std.process.Init) !void {
             width = rl.getScreenWidth();
             height = rl.getScreenHeight();
         }
-        if (database_need_update) {
+        if (state.database.need_update) {
             // clear
             for (foods.items) |food| for (0..food.len) |i| init.gpa.free(food[i]);
             foods.clearRetainingCapacity();
             // update
-            database_need_update = false;
+            state.database.need_update = false;
             try foods.append(init.gpa, .{
                 try init.gpa.dupeSentinel(u8, "id", 0),
                 try init.gpa.dupeSentinel(u8, "created", 0),
                 try init.gpa.dupeSentinel(u8, "name", 0),
                 try init.gpa.dupeSentinel(u8, "energy", 0),
             });
-            const stmt = database.prepare("SELECT * FROM food");
+            const stmt = state.database.db.prepare("SELECT * FROM food");
             defer stmt.deinit();
             var rc = stmt.step();
             while (rc != .done) : (rc = stmt.step()) {
@@ -345,22 +406,21 @@ pub fn main(init: std.process.Init) !void {
         // draw
         rl.beginDrawing();
         rl.clearBackground(.light_gray);
-        UI.start(.{ .x = 8, .y = 8 }, .{});
+        UI.start(.{ .x = Style.padding, .y = Style.padding }, .{});
         if (button("add a food", .{})) {
             try tabs.append(init.gpa, .{});
         }
         const max_width = 128;
-        const padding = 8;
         const margin = 1;
         const font_size = 20;
         const tab_background_rect: rl.Rectangle = blk: {
-            const x = padding + max_width;
-            const y = UI.sizes.y + padding * 2;
+            const x = Style.padding + max_width;
+            const y = UI.sizes.y + Style.padding * 2;
             break :blk .{
                 .x = x,
                 .y = y,
-                .width = cast(f32, width - (x + padding)),
-                .height = cast(f32, height) - (y + padding),
+                .width = cast(f32, width - (x + Style.padding)),
+                .height = cast(f32, height) - (y + Style.padding),
             };
         };
         tab_background_rect.draw(.white);
@@ -383,7 +443,7 @@ pub fn main(init: std.process.Init) !void {
                             const text_width = rl.measureText(
                                 @ptrCast(text),
                                 20,
-                            ) + padding * 2;
+                            ) + Style.padding * 2;
                             if (text_width > max_width) {
                                 len -= 1;
                                 text[len] = 0;
@@ -412,20 +472,33 @@ pub fn main(init: std.process.Init) !void {
                 }
             }
             var rect: rl.Rectangle = .{
-                .x = tab_background_rect.x + padding,
-                .y = tab_background_rect.y + padding,
+                .x = tab_background_rect.x + Style.padding,
+                .y = tab_background_rect.y + Style.padding,
                 .width = margin,
-                .height = margin + cast(f32, foods.items.len * (font_size + padding * 2 + margin)),
+                .height = margin + cast(f32, foods.items.len * (font_size + Style.padding * 2 + margin)),
             };
             for (cells_widths) |w| {
-                rect.width += cast(f32, w) + padding * 2 + margin;
+                rect.width += cast(f32, w) + Style.padding * 2 + margin;
             }
+
+            const row_height = font_size + Style.padding * 2 + margin;
+
+            if (table_current_row) |current| {
+                const selected_background = rl.Rectangle{
+                    .x = rect.x,
+                    .y = rect.y + row_height + (row_height * cast(f32, current)),
+                    .width = rect.width,
+                    .height = row_height,
+                };
+                selected_background.draw(.blue);
+            }
+
             var y: i32 = @intFromFloat(rect.y);
             for (foods.items, 0..) |food, i| {
                 var x: i32 = @intFromFloat(rect.x);
                 const start_h: rl.Vector2 = .{
                     .x = rect.x,
-                    .y = cast(f32, y + font_size) + padding * 2 + margin,
+                    .y = cast(f32, y + font_size) + Style.padding * 2 + margin,
                 };
                 start_h.drawLine(
                     .{ .y = start_h.y, .x = rect.x + rect.width },
@@ -434,14 +507,14 @@ pub fn main(init: std.process.Init) !void {
                 for (food, 0..) |cell, j| {
                     rl.drawText(
                         cell,
-                        x + padding + margin,
-                        y + padding + margin,
+                        x + Style.padding + margin,
+                        y + Style.padding + margin,
                         font_size,
                         .black,
                     );
                     if (i == 0) {
                         const start_v: rl.Vector2 = .{
-                            .x = cast(f32, x + cells_widths[j]) + (padding + margin) * 2,
+                            .x = cast(f32, x + cells_widths[j]) + (Style.padding + margin) * 2,
                             .y = rect.y,
                         };
                         start_v.drawLine(
@@ -449,11 +522,37 @@ pub fn main(init: std.process.Init) !void {
                             .black,
                         );
                     }
-                    x += cells_widths[j] + padding * 2 + margin;
+                    x += cells_widths[j] + Style.padding * 2 + margin;
                 }
-                y += font_size + padding * 2 + margin;
+                y += row_height;
             }
             rect.drawLines(1, .black);
+
+            if (UI.mouse_position.checkCollisionRec(rect)) {
+                if (UI.mouse_released) {
+                    const relative = UI.mouse_position.subtract(rect.toVector2());
+                    const index: usize = @intFromFloat(relative.y / row_height);
+                    if (index > 0) {
+                        table_current_row = index - 1;
+                        state.edit.name.clearRetainingCapacity();
+                        try state.edit.name.appendSlice(
+                            init.gpa,
+                            foods.items[index][2],
+                        );
+                        state.edit.energy.clearRetainingCapacity();
+                        try state.edit.energy.appendSlice(
+                            init.gpa,
+                            foods.items[index][3],
+                        );
+                    }
+                }
+            }
+            try uiEditPanel(init.gpa, .{
+                .x = tab_background_rect.x + tab_background_rect.width / 2,
+                .y = tab_background_rect.y,
+                .width = tab_background_rect.width / 2,
+                .height = tab_background_rect.height,
+            }, &state);
         } else {
             // new food tab
             UI.start(tab_background_rect.toVector2().addValue(8), .{});
@@ -462,16 +561,16 @@ pub fn main(init: std.process.Init) !void {
             const inputs_width = 128 * 3;
             UI.start(.{
                 .x = tab_background_rect.x + 128,
-                .y = tab_background_rect.y + 8,
+                .y = tab_background_rect.y + Style.padding,
             }, .{});
-            try input(
+            _ = try input(
                 init.gpa,
                 "enter name of food",
                 &tabs.items[current_tab - 1].name,
                 inputs_width,
                 .{},
             );
-            try input(
+            _ = try input(
                 init.gpa,
                 "enter energy value of food",
                 &tabs.items[current_tab - 1].energy,
@@ -479,15 +578,15 @@ pub fn main(init: std.process.Init) !void {
                 .{},
             );
             UI.start(.{
-                .x = tab_background_rect.x + tab_background_rect.width - 8,
-                .y = tab_background_rect.y + tab_background_rect.height - 8,
+                .x = tab_background_rect.x + tab_background_rect.width - Style.padding,
+                .y = tab_background_rect.y + tab_background_rect.height - Style.padding,
             }, .{ .origin = .right_bottom, .direction = .left });
             if (button("add", .{})) {
                 const i = current_tab - 1;
                 const name = tabs.items[i].name.items;
                 const raw_energy = tabs.items[i].energy.items;
                 const energy = try std.fmt.parseFloat(f32, raw_energy);
-                const stmt = database.prepare("INSERT INTO food (created, name, energy) VALUES (?, ?, ?)");
+                const stmt = state.database.db.prepare("INSERT INTO food (created, name, energy) VALUES (?, ?, ?)");
                 defer stmt.deinit();
                 try stmt.bindInt64(1, std.Io.Clock.real.now(init.io).toSeconds());
                 try stmt.bindText(2, name, .static);
@@ -496,13 +595,13 @@ pub fn main(init: std.process.Init) !void {
                 var tab = tabs.orderedRemove(i);
                 tab.deinit(init.gpa);
                 current_tab -= 1;
-                database_need_update = true;
+                state.database.need_update = true;
             }
             if (button("cancel", .{})) {
                 var tab = tabs.orderedRemove(current_tab - 1);
                 tab.deinit(init.gpa);
                 current_tab -= 1;
-                database_need_update = true;
+                state.database.need_update = true;
             }
         }
         rl.endDrawing();
