@@ -238,7 +238,7 @@ pub const ConfigFlags = packed struct(c_uint) {
 /// Keyboard keys (US keyboard layout)
 /// NOTE: Use GetKeyPressed() to allow redefining
 /// required keys for alternative layouts
-pub const KeyboardKey = enum(c_int) {
+pub const Key = enum(c_int) {
     /// Key: NULL, used for no key pressed
     null = 0,
     // Alphanumeric keys
@@ -463,6 +463,30 @@ pub const KeyboardKey = enum(c_int) {
     volume_up = 24,
     /// Key: Android volume down button
     volume_down = 25,
+
+    pub extern fn IsKeyUp(key: c_int) bool;
+    /// Check if a key is NOT being pressed
+    pub fn isUp(self: Key) bool {
+        return IsKeyUp(@intFromEnum(self));
+    }
+
+    extern fn IsKeyPressed(key: c_int) bool;
+    /// Check if a key has been pressed once
+    pub fn isPressed(self: Key) bool {
+        return IsKeyPressed(@intFromEnum(self));
+    }
+
+    extern fn IsKeyDown(key: c_int) bool;
+    /// Check if a key is being pressed
+    pub fn isDown(self: Key) bool {
+        return IsKeyDown(@intFromEnum(self));
+    }
+
+    extern fn IsKeyReleased(key: c_int) bool;
+    /// Check if a key has been released once
+    pub fn isReleased(self: Key) bool {
+        return IsKeyReleased(@intFromEnum(self));
+    }
 };
 
 /// Window-related functions
@@ -577,9 +601,4 @@ extern fn GetCharPressed() c_int;
 /// Get char pressed (unicode), call it multiple times for chars queued, returns 0 when the queue is empty
 pub fn getCharPressed() i32 {
     return GetCharPressed();
-}
-
-extern fn IsKeyReleased(key: c_int) bool;
-pub fn isKeyReleased(key: KeyboardKey) bool {
-    return IsKeyReleased(@intFromEnum(key));
 }
