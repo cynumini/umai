@@ -39,7 +39,9 @@ pub const Statement = struct {
     }
 
     pub fn step(self: Statement) StatementResult {
-        return @enumFromInt(self.stmt.sqlite3_step());
+        const result = self.stmt.sqlite3_step();
+        std.debug.print("result = {}\n", .{result});
+        return @enumFromInt(result);
     }
 
     pub fn columnCount(self: Statement) usize {

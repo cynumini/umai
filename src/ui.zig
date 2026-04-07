@@ -1,16 +1,38 @@
 const std = @import("std");
 const cast = std.math.lossyCast;
 
-const rl = @import("raylib.zig");
+const rl = @import("raylib");
 
 var selected: ?usize = null;
-var index: usize = 0;
+var current_index: usize = 0;
 var max_index: usize = 0;
 pub var mouse_position: rl.Vector2 = .{};
 var mouse_down = false;
 pub var mouse_released = false;
 var enter_down = false;
 var enter_released = false;
+pub var up_pressed = false;
+pub var down_pressed = false;
+pub var escape_pressed = false;
+
+pub fn getIndex() usize {
+    const index = current_index;
+    current_index += 1;
+    return index;
+}
+
+pub fn isSelected(index: usize) bool {
+    if (selected) |s| {
+        if (index == s) {
+            return true;
+        }
+    }
+    return false;
+}
+
+pub fn select(index: usize) void {
+    selected = index;
+}
 
 pub fn frameStart() void {
     mouse_position = rl.Mouse.getPosition();
@@ -18,9 +40,12 @@ pub fn frameStart() void {
     mouse_released = rl.Mouse.isButtonReleased(.left);
     enter_down = rl.Key.isDown(.enter);
     enter_released = rl.Key.isReleased(.enter);
+    up_pressed = rl.Key.isPressed(.up);
+    down_pressed = rl.Key.isPressed(.down);
+    escape_pressed = rl.Key.isPressed(.escape);
 
-    max_index = index;
-    index = 0;
+    max_index = current_index;
+    current_index = 0;
     const move: isize = blk: {
         if (rl.Key.isUp(.left_shift) and rl.Key.isPressed(.tab)) {
             break :blk 1;
@@ -98,6 +123,8 @@ pub const Style = struct {
     pub const child_gap = 6;
     pub const border = 2;
     pub const border_color: rl.Color = .black;
+    pub const font_size = 20;
+    pub const margin = 1;
 };
 
 fn startElement(sizes: rl.Vector2, child_gap: f32) struct { rl.Vector2, rl.Rectangle } {
@@ -226,14 +253,9 @@ pub fn button(text: [:0]const u8, options: ButtonOptions) bool {
         }
     }
 
-    const is_selected = blk: {
-        if (selected) |s| {
-            if (index == s) {
-                break :blk true;
-            }
-        }
-        break :blk false;
-    };
+    const index = getIndex();
+    const is_selected = isSelected(index);
+
     if (is_selected) {
         if (enter_down) {
             background = .dark_gray;
@@ -244,7 +266,6 @@ pub fn button(text: [:0]const u8, options: ButtonOptions) bool {
 
     const border_color: rl.Color = if (is_selected) .blue else options.border_color;
     self.end(background, .black, border_color);
-    index += 1;
     return click;
 }
 
@@ -279,19 +300,16 @@ pub fn input(
         options.child_gap,
     );
     var edited = false;
+
+    const index = getIndex();
+
     if (mouse_position.checkCollisionRec(self.rect)) {
         if (mouse_released) {
             selected = index;
         }
     }
-    const is_selected = blk: {
-        if (selected) |s| {
-            if (index == s) {
-                break :blk true;
-            }
-        }
-        break :blk false;
-    };
+
+    const is_selected = isSelected(index);
 
     if (is_selected) {
         var char = rl.getCharPressed();
@@ -302,17 +320,11 @@ pub fn input(
 
         if (rl.Key.isReleased(.backspace)) {
             _ = text.pop();
+            edited = true;
         }
     }
-    const border_color: rl.Color = blk: {
-        if (selected) |s| {
-            if (index == s) {
-                break :blk .blue;
-            }
-        }
-        break :blk .black;
-    };
+
+    const border_color: rl.Color = if (is_selected) .blue else .black;
     self.end(options.background, foreground, border_color);
-    index += 1;
     return edited;
 }

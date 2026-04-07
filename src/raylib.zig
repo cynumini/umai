@@ -464,7 +464,7 @@ pub const Key = enum(c_int) {
     /// Key: Android volume down button
     volume_down = 25,
 
-    pub extern fn IsKeyUp(key: c_int) bool;
+    extern fn IsKeyUp(key: c_int) bool;
     /// Check if a key is NOT being pressed
     pub fn isUp(self: Key) bool {
         return IsKeyUp(@intFromEnum(self));
@@ -486,6 +486,12 @@ pub const Key = enum(c_int) {
     /// Check if a key has been released once
     pub fn isReleased(self: Key) bool {
         return IsKeyReleased(@intFromEnum(self));
+    }
+
+    extern fn SetExitKey(key: c_int) void;
+    /// Set a custom key to exit program (default is ESC)
+    pub fn setExit(self: Key) void {
+        SetExitKey(@intFromEnum(self));
     }
 };
 
