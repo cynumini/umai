@@ -10,50 +10,41 @@ const ui = @import("ui.zig");
 const UI = ui.UI;
 const Style = ui.Style;
 
-const Tab = struct {
-    name: std.ArrayList(u8) = .empty,
-    energy: std.ArrayList(u8) = .empty,
-
-    fn deinit(self: *Tab, allocator: std.mem.Allocator) void {
-        self.name.deinit(allocator);
-        self.energy.deinit(allocator);
-    }
-};
-
 fn uiEditPanel(allocator: std.mem.Allocator, rect: rl.Rectangle, state: *State) !void {
     rect.draw(.light_gray);
     UI.start(rect.toVector2().addValue(Style.padding), .{});
     ui.label("name", .{});
-    const id = state.table_current_row.?;
+    // const id = state.table_current_row.?;
     if (try ui.input(
         allocator,
-        "",
         &state.edit.name,
         rect.width - Style.padding,
         .{},
     )) {
-        state.database.updateName(@intCast(id + 1), state.edit.name.items);
+        std.debug.print("updateName\n", .{});
+        // state.database.updateName(@intCast(id + 1), state.edit.name.items);
     }
     ui.label("energy", .{});
     if (try ui.input(
         allocator,
-        "",
         &state.edit.energy,
         rect.width - Style.padding,
         .{},
     )) {
-        const energy: ?f64 = std.fmt.parseFloat(f64, state.edit.energy.items) catch null;
-        if (energy) |e| {
-            state.database.updateEnergy(@intCast(id + 1), e);
-        }
+        std.debug.print("updateEnergy\n", .{});
+        // const energy: ?f64 = std.fmt.parseFloat(f64, state.edit.energy.items) catch null;
+        // if (energy) |e| {
+        //     state.database.updateEnergy(@intCast(id + 1), e);
+        // }
     }
 }
 
 pub fn main(init: std.process.Init) !void {
-    var state: State = try .init(init.io);
+    var state: State = try .init(init.gpa, init.io);
     defer state.deinit(init.gpa);
 
-    UI.init();
+    ui.init();
+    defer ui.deinit();
 
     rl.ConfigFlags.set(.{ .window_resizable = true });
 
@@ -67,14 +58,6 @@ pub fn main(init: std.process.Init) !void {
 
     // init
     var current_tab: usize = 0;
-
-    var tabs: std.ArrayList(Tab) = .empty;
-    defer {
-        for (tabs.items) |*tab| {
-            tab.deinit(init.gpa);
-        }
-        tabs.deinit(init.gpa);
-    }
 
     rl.Key.setExit(.q);
 
@@ -93,7 +76,7 @@ pub fn main(init: std.process.Init) !void {
         rl.clearBackground(.light_gray);
         UI.start(.{ .x = Style.padding, .y = Style.padding }, .{});
         if (ui.button("add a food", .{})) {
-            try tabs.append(init.gpa, .{});
+            try state.tabs.append(init.gpa, try .init(init.gpa));
         }
         const max_width = 128;
         // const margin = 1;
@@ -110,7 +93,7 @@ pub fn main(init: std.process.Init) !void {
         };
         tab_background_rect.draw(.white);
         // main tab is not tab
-        for (0..tabs.items.len + 1) |i| {
+        for (0..state.tabs.items.len + 1) |i| {
             const background: rl.Color = if (current_tab == i) .white else .gray;
             if (i == 0) {
                 if (ui.button("main", .{
@@ -119,11 +102,11 @@ pub fn main(init: std.process.Init) !void {
                     .width = max_width,
                 })) current_tab = i;
             } else {
-                const name = tabs.items[i - 1].name.items;
+                const name = try state.tabs.items[i - 1].name.get(ui.allocator);
                 const text: [:0]const u8 = blk: {
                     var len = name.len;
                     if (len > 0) {
-                        var text: []u8 = try UI.allocator.dupeSentinel(u8, name, 0);
+                        var text: []u8 = try ui.allocator.dupeSentinel(u8, name, 0);
                         while (true) {
                             const text_width = rl.measureText(
                                 @ptrCast(text),
@@ -160,16 +143,8 @@ pub fn main(init: std.process.Init) !void {
 
             if (old_index != state.table_current_row) {
                 if (state.table_current_row) |i| {
-                    state.edit.name.clearRetainingCapacity();
-                    try state.edit.name.appendSlice(
-                        init.gpa,
-                        state.foods_str.items[i + 1][2],
-                    );
-                    state.edit.energy.clearRetainingCapacity();
-                    try state.edit.energy.appendSlice(
-                        init.gpa,
-                        state.foods_str.items[i + 1][3],
-                    );
+                    try state.edit.name.set(init.gpa, state.foods_str.items[i + 1][2]);
+                    try state.edit.energy.set(init.gpa, state.foods_str.items[i + 1][3]);
                 }
             }
 
@@ -193,15 +168,13 @@ pub fn main(init: std.process.Init) !void {
             }, .{});
             _ = try ui.input(
                 init.gpa,
-                "enter name of food",
-                &tabs.items[current_tab - 1].name,
+                &state.tabs.items[current_tab - 1].name,
                 inputs_width,
                 .{},
             );
             _ = try ui.input(
                 init.gpa,
-                "enter energy value of food",
-                &tabs.items[current_tab - 1].energy,
+                &state.tabs.items[current_tab - 1].energy,
                 inputs_width,
                 .{},
             );
@@ -211,8 +184,8 @@ pub fn main(init: std.process.Init) !void {
             }, .{ .origin = .right_bottom, .direction = .left });
             if (ui.button("add", .{})) {
                 const i = current_tab - 1;
-                const name = tabs.items[i].name.items;
-                const raw_energy = tabs.items[i].energy.items;
+                const name = try state.tabs.items[i].name.get(ui.allocator);
+                const raw_energy = try state.tabs.items[i].energy.get(ui.allocator);
                 const energy = try std.fmt.parseFloat(f32, raw_energy);
                 const stmt = state.database.db.prepare("INSERT INTO food (created, name, energy) VALUES (?, ?, ?)");
                 defer stmt.deinit();
@@ -220,13 +193,13 @@ pub fn main(init: std.process.Init) !void {
                 try stmt.bindText(2, name, .static);
                 try stmt.bindDouble(3, energy);
                 std.debug.assert(stmt.step() == .done);
-                var tab = tabs.orderedRemove(i);
+                var tab = state.tabs.orderedRemove(i);
                 tab.deinit(init.gpa);
                 current_tab -= 1;
                 state.database.need_update = true;
             }
             if (ui.button("cancel", .{})) {
-                var tab = tabs.orderedRemove(current_tab - 1);
+                var tab = state.tabs.orderedRemove(current_tab - 1);
                 tab.deinit(init.gpa);
                 current_tab -= 1;
                 state.database.need_update = true;

@@ -488,6 +488,12 @@ pub const Key = enum(c_int) {
         return IsKeyReleased(@intFromEnum(self));
     }
 
+    extern fn IsKeyPressedRepeat(key: c_int) bool;
+    /// Check if a key has been pressed again
+    pub fn isPressedRepeat(self: Key) bool {
+        return IsKeyPressedRepeat(@intFromEnum(self));
+    }
+
     extern fn SetExitKey(key: c_int) void;
     /// Set a custom key to exit program (default is ESC)
     pub fn setExit(self: Key) void {
@@ -607,4 +613,114 @@ extern fn GetCharPressed() c_int;
 /// Get char pressed (unicode), call it multiple times for chars queued, returns 0 when the queue is empty
 pub fn getCharPressed() i32 {
     return GetCharPressed();
+}
+
+extern fn LoadUTF8(codepoints: [*]const c_int, length: c_int) [*:0]u8;
+/// Load UTF-8 text encoded from codepoints array
+pub fn loadUTF8(codepoints: []i32) [:0]u8 {
+    const result = LoadUTF8(codepoints.ptr, @intCast(codepoints.len));
+    const len = std.mem.len(result);
+    return result[0..len :0];
+}
+
+extern fn UnloadUTF8(text: [*:0]u8) void;
+/// Unload UTF-8 text encoded from codepoints array
+pub fn unloadUTF8(text: [:0]u8) void {
+    UnloadUTF8(text);
+}
+
+extern fn LoadCodepoints(text: [*:0]const u8, count: *c_int) [*]c_int;
+/// Load all codepoints from a UTF-8 text string, codepoints count returned by parameter
+pub fn loadCodepoints(text: [:0]const u8) []i32 {
+    var count: i32 = undefined;
+    const result = LoadCodepoints(text, &count);
+    return result[0..@intCast(count)];
+}
+
+extern fn UnloadCodepoints(codepoints: [*]c_int) void;
+/// Unload codepoints data from memory
+pub fn unloadCodepoints(codepoints: []i32) void {
+    UnloadCodepoints(codepoints.ptr);
+}
+
+extern fn GetCodepointCount(text: [*c]const u8) c_int;
+extern fn GetCodepoint(text: [*c]const u8, codepointSize: [*c]c_int) c_int;
+extern fn GetCodepointNext(text: [*c]const u8, codepointSize: [*c]c_int) c_int;
+extern fn GetCodepointPrevious(text: [*c]const u8, codepointSize: [*c]c_int) c_int;
+extern fn CodepointToUTF8(codepoint: c_int, utf8Size: [*c]c_int) [*c]const u8;
+
+pub const Image = extern struct {
+    data: ?*anyopaque = null,
+    width: c_int = 0,
+    height: c_int = 0,
+    mipmaps: c_int = 0,
+    format: c_int = 0,
+};
+
+pub const GlyphInfo = extern struct {
+    value: c_int = 0,
+    offsetX: c_int = 0,
+    offsetY: c_int = 0,
+    advanceX: c_int = 0,
+    image: Image = .{},
+};
+
+pub const Font = extern struct {
+    baseSize: c_int = 0,
+    glyphCount: c_int = 0,
+    glyphPadding: c_int = 0,
+    texture: Texture = .{},
+    recs: [*c]Rectangle = null,
+    glyphs: [*c]GlyphInfo = null,
+
+    extern fn DrawTextCodepoint(font: Font, codepoint: c_int, position: Vector2, fontSize: f32, tint: Color) void;
+    /// Draw one character (codepoint)
+    pub fn drawTextCodepoint(self: Font, codepoint: i32, position: Vector2, font_size: f32, tint: Color) void {
+        DrawTextCodepoint(self, codepoint, position, font_size, tint);
+    }
+
+    extern fn DrawTextCodepoints(font: Font, codepoints: [*]const c_int, codepointCount: c_int, position: Vector2, fontSize: f32, spacing: f32, tint: Color) void;
+    /// Draw multiple character (codepoint)
+    pub fn drawTextCodepoints(
+        self: Font,
+        codepoint: []const i32,
+        position: Vector2,
+        font_size: f32,
+        spacing: f32,
+        tint: Color,
+    ) void {
+        DrawTextCodepoints(
+            self,
+            codepoint.ptr,
+            @intCast(codepoint.len),
+            position,
+            font_size,
+            spacing,
+            tint,
+        );
+    }
+};
+
+extern fn GetFontDefault() Font;
+/// Get the default Font
+pub fn getFontDefault() Font {
+    return GetFontDefault();
+}
+
+extern fn GetGlyphInfo(font: Font, codepoint: c_int) GlyphInfo;
+/// Get glyph font info data for a codepoint (unicode character), fallback to '?' if not found
+pub fn getGlyphInfo(font: Font, codepoint: i32) GlyphInfo {
+    return GetGlyphInfo(font, codepoint);
+}
+
+pub extern fn GetTime() f64;
+/// Get elapsed time in seconds since InitWindow()
+pub fn getTime() f64 {
+    return GetTime();
+}
+
+pub extern fn GetFrameTime() f32;
+/// Get time in seconds for last frame drawn (delta time)
+pub fn getFrameTime() f32 {
+    return GetFrameTime();
 }

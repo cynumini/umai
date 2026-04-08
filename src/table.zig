@@ -71,20 +71,19 @@ pub fn table(rect: rl.Rectangle, state: *State) !void {
     }
 
     const index = ui.getIndex();
-    const is_selected = ui.isSelected(index);
+    const is_selected = ui.isActive(index);
     const border_color: rl.Color = if (is_selected) .blue else .black;
     rectangle.drawLines(Style.border, border_color);
 
-    if (ui.mouse_position.checkCollisionRec(rectangle)) {
-        if (ui.mouse_released) {
-            const relative = ui.mouse_position.subtract(rectangle.toVector2());
-            const i: usize = @intFromFloat(relative.y / row_height);
-            if (i > 0) {
-                state.table_current_row = i - 1;
-                ui.select(index);
-            }
+    if (ui.onMousePressed(rectangle)) {
+        const relative = ui.mouse_position.subtract(rectangle.toVector2());
+        const i: usize = @intFromFloat(relative.y / row_height);
+        if (i > 0) {
+            state.table_current_row = i - 1;
+            ui.activate(index);
         }
     }
+
     if (is_selected) {
         const move = @as(isize, @intFromBool(ui.down_pressed)) - @as(isize, @intFromBool(ui.up_pressed));
         const max_index = state.foods_str.items.len - 1;

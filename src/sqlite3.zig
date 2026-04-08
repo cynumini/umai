@@ -40,7 +40,7 @@ pub const Statement = struct {
 
     pub fn step(self: Statement) StatementResult {
         const result = self.stmt.sqlite3_step();
-        std.debug.print("result = {}\n", .{result});
+        // std.debug.print("result = {}\n", .{result});
         return @enumFromInt(result);
     }
 
@@ -128,7 +128,7 @@ pub const Database = struct {
     pub fn exec(self: Database, sql: [:0]const u8) void {
         var errmsg: [*:0]u8 = undefined;
         if (self.db.sqlite3_exec(sql, null, null, &errmsg) != @intFromEnum(Result.ok)) {
-            std.debug.print("SQL: {s}\n", .{errmsg});
+            // std.debug.print("SQL: {s}\n", .{errmsg});
             sqlite3_free(errmsg);
             unreachable;
         }

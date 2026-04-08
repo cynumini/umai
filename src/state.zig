@@ -1,5 +1,6 @@
 const std = @import("std");
 const sqlite3 = @import("sqlite3");
+const ui = @import("ui.zig");
 
 const Self = @This();
 
@@ -79,7 +80,7 @@ const Database = struct {
         std.debug.assert(stmt.step() == .done);
         std.debug.assert(stmt.step() == .done);
         self.need_update = true;
-        std.debug.print("{s}\n", .{name});
+        // std.debug.print("{s}\n", .{name});
     }
 
     pub fn updateEnergy(self: *Database, index: i64, energy: f64) void {
@@ -94,24 +95,35 @@ const Database = struct {
 };
 
 const Edit = struct {
-    name: std.ArrayList(u8) = .empty,
-    energy: std.ArrayList(u8) = .empty,
+    name: ui.Text,
+    energy: ui.Text,
 
-    fn deinit(self: *Edit, allocator: std.mem.Allocator) void {
+    pub fn init(allocator: std.mem.Allocator) !Edit {
+        return .{
+            .name = try .init(allocator, "name of food", null),
+            .energy = try .init(allocator, "energy of food", null),
+        };
+    }
+
+    pub fn deinit(self: *Edit, allocator: std.mem.Allocator) void {
         self.name.deinit(allocator);
         self.energy.deinit(allocator);
     }
 };
+
+const Tab = Edit;
 
 edit: Edit,
 database: Database,
 table_current_row: ?usize,
 foods_str: std.ArrayList([4][:0]const u8),
 foods: std.ArrayList(Food),
+tabs: std.ArrayList(Tab),
 
-pub fn init(io: std.Io) !Self {
+pub fn init(allocator: std.mem.Allocator, io: std.Io) !Self {
     return .{
-        .edit = .{},
+        .edit = try .init(allocator),
+        .tabs = .empty,
         .database = try .init(io),
         .table_current_row = null,
         .foods_str = .empty,
@@ -127,6 +139,11 @@ pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
 
     for (self.foods_str.items) |food| for (0..food.len) |i| allocator.free(food[i]);
     self.foods_str.deinit(allocator);
+
+    for (self.tabs.items) |*tab| {
+        tab.deinit(allocator);
+    }
+    self.tabs.deinit(allocator);
 }
 
 pub fn update(self: *Self, allocator: std.mem.Allocator) !void {
