@@ -45,6 +45,19 @@ pub const Text = struct {
         }
     }
 
+    pub fn move_to_index(self: *Text, index: usize) void {
+        self.timer = 0;
+        if (self.data.items.len == 0) return;
+        if (index <= self.data.items.len) self.position = index;
+    }
+
+    pub fn last(self: *Text) void {
+        self.timer = 0;
+        if (self.data.items.len > 0) {
+            self.position = self.data.items.len;
+        }
+    }
+
     // Caller own memory
     pub fn get(self: *Text, allocator: std.mem.Allocator) ![:0]const u8 {
         const result = rl.loadUTF8(self.data.items);
@@ -80,11 +93,6 @@ pub const Text = struct {
     }
 };
 
-fn getCharWidth(font: rl.Font, codepoint: i32) f32 {
-    const info = rl.getGlyphInfo(font, codepoint);
-    return cast(f32, info.image.width) * cast(f32, Style.font_size) / cast(f32, font.baseSize);
-}
-
 const InputOptions = struct {
     background: rl.Color = .white,
     padding: f32 = Style.padding,
@@ -114,6 +122,31 @@ pub fn input(
 
     if (ui.onMousePressed(rect)) {
         ui.activate(index);
+        const relative = ui.getRelativeMousePosition(rect.toVector2());
+        var char_position: f32 = padding_and_border - 2;
+        var prev_char_position = char_position;
+
+        for (text.data.items, 0..) |codepoint, new_position| {
+            prev_char_position = char_position;
+            const codepoint_width = ui.getCharWidth(i32, rl.getFontDefault(), codepoint) + 2;
+            char_position += codepoint_width;
+            const char_start = prev_char_position;
+            const char_mid = char_position - codepoint_width / 2;
+            const char_end = char_position;
+            if (relative.x >= char_start and relative.x < char_mid) {
+                text.move_to_index(new_position);
+                break;
+            } else if (relative.x >= char_mid and relative.x < char_end) {
+                text.move_to_index(new_position + 1);
+                break;
+            }
+        } else {
+            if (relative.x < padding_and_border - 2) {
+                text.move_to_index(0);
+            } else {
+                text.last();
+            }
+        }
     }
 
     const border_color = if (is_active) Style.active else Style.foreground;
@@ -145,7 +178,7 @@ pub fn input(
         var char = rl.getCharPressed();
 
         for (0..text.position) |i| {
-            caret.x += getCharWidth(rl.getFontDefault(), text.data.items[i]) + 2;
+            caret.x += ui.getCharWidth(i32, rl.getFontDefault(), text.data.items[i]) + 2;
         }
 
         while (char != 0) : (char = rl.getCharPressed()) {

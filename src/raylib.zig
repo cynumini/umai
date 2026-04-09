@@ -1,4 +1,5 @@
 const std = @import("std");
+const cast = std.math.lossyCast;
 
 /// Vector2, 2 components
 pub const Vector2 = extern struct {
@@ -591,16 +592,34 @@ pub const Mouse = struct {
     pub const getWheelMove = GetMouseWheelMove;
 };
 
-extern fn DrawText(text: [*:0]const u8, posX: c_int, posY: c_int, fontSize: c_int, color: Color) void;
 /// Draw text (using default font)
-pub fn drawText(text: [*:0]const u8, position_x: i32, position_y: i32, font_size: i32, color: Color) void {
-    DrawText(text, position_x, position_y, font_size, color);
+pub fn drawText(text: []const u8, position_x: i32, position_y: i32, font_size: i32, color: Color) void {
+    var x: f32 = @floatFromInt(position_x);
+    const font = getFontDefault();
+    for (text) |codepoint| {
+        font.drawTextCodepoint(@intCast(codepoint), .{
+            .x = x,
+            .y = @floatFromInt(position_y),
+        }, @floatFromInt(font_size), color);
+        x += measureCodepoint(u8, font, codepoint, font_size) + 2;
+    }
 }
 
-extern fn MeasureText(text: [*:0]const u8, fontSize: c_int) c_int;
+/// Measure codepoint
+pub fn measureCodepoint(T: type, font: Font, codepoint: T, font_size: i32) f32 {
+    const info = getGlyphInfo(font, codepoint);
+    const c = cast(f32, font_size) / cast(f32, font.baseSize);
+    return cast(f32, info.image.width) * c;
+}
+
 /// Measure string width for default font
-pub fn measureText(text: [*:0]const u8, font_size: i32) i32 {
-    return MeasureText(text, font_size);
+pub fn measureText(T: type, text: []const T, font_size: i32) i32 {
+    var width: i32 = 0;
+    const font = getFontDefault();
+    for (text) |codepoint| {
+        width += @intFromFloat(measureCodepoint(T, font, codepoint, font_size) + 2);
+    }
+    return width - 2;
 }
 
 pub extern fn DrawLine(startPosX: c_int, startPosY: c_int, endPosX: c_int, endPosY: c_int, color: Color) void;

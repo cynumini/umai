@@ -94,7 +94,7 @@ const Database = struct {
     }
 };
 
-const Edit = struct {
+pub const Edit = struct {
     name: ui.Text,
     energy: ui.Text,
 
@@ -111,7 +111,17 @@ const Edit = struct {
     }
 };
 
-const Tab = Edit;
+const Tab = union(enum) {
+    main: void,
+    new_food: Edit,
+
+    pub fn deinit(self: *Tab, allocator: std.mem.Allocator) void {
+        switch (self.*) {
+            .main => {},
+            .new_food => |*tab| tab.deinit(allocator),
+        }
+    }
+};
 
 edit: Edit,
 database: Database,
@@ -119,16 +129,22 @@ table_current_row: ?usize,
 foods_str: std.ArrayList([4][:0]const u8),
 foods: std.ArrayList(Food),
 tabs: std.ArrayList(Tab),
+current_tab: usize,
 
 pub fn init(allocator: std.mem.Allocator, io: std.Io) !Self {
-    return .{
+    var self: Self = .{
         .edit = try .init(allocator),
         .tabs = .empty,
         .database = try .init(io),
         .table_current_row = null,
         .foods_str = .empty,
         .foods = .empty,
+        .current_tab = 0,
     };
+
+    try self.tabs.append(allocator, .{ .main = {} });
+
+    return self;
 }
 
 pub fn deinit(self: *Self, allocator: std.mem.Allocator) void {
@@ -176,4 +192,8 @@ pub fn update(self: *Self, allocator: std.mem.Allocator) !void {
             try self.foods_str.append(allocator, try food.row(allocator));
         }
     }
+}
+
+pub fn addTab(self: *Self, allocator: std.mem.Allocator) !void {
+    try self.tabs.append(allocator, .{ .new_food = try .init(allocator) });
 }

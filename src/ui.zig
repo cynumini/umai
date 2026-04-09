@@ -19,6 +19,8 @@ pub var down_pressed = false;
 pub var escape_pressed = false;
 var something_activated = false;
 
+pub var last_rect: rl.Rectangle = .{};
+
 pub fn init() void {
     arena = .init(std.heap.page_allocator);
     allocator = arena.allocator();
@@ -50,6 +52,10 @@ pub fn activate(index: ?usize) void {
 
 pub fn onMousePressed(rect: rl.Rectangle) bool {
     return mouse_position.checkCollisionRec(rect) and mouse_pressed;
+}
+
+pub fn getRelativeMousePosition(position: rl.Vector2) rl.Vector2 {
+    return mouse_position.subtract(position);
 }
 
 pub fn frameStart() void {
@@ -141,6 +147,8 @@ pub const Style = struct {
     pub const child_gap = 6;
     pub const border = 2;
 
+    pub const clear_color = rl.Color.light_gray;
+
     pub const font_size = 20;
     pub const margin = 1;
     pub const foreground = rl.Color.black;
@@ -169,6 +177,8 @@ pub fn startElement(sizes: rl.Vector2, child_gap: f32) rl.Rectangle {
     UI.offset = offset;
     UI.sizes = sizes;
 
+    last_rect = rect;
+
     return rect;
 }
 
@@ -178,13 +188,14 @@ pub const Label = struct {
     border: f32,
     padding: f32,
     font_size: i32,
-    text: [:0]const u8,
+    text: []const u8,
 
-    pub fn start(text: [:0]const u8, width: ?f32, padding: f32, border: f32, font_size: i32, child_gap: f32) Label {
+    pub fn start(text: []const u8, width: ?f32, padding: f32, border: f32, font_size: i32, child_gap: f32) Label {
         const sizes: rl.Vector2 = .{
             .x = width orelse (padding + border) * 2 + cast(
                 f32,
                 rl.measureText(
+                    u8,
                     text,
                     font_size,
                 ),
@@ -241,7 +252,7 @@ pub fn label(text: [:0]const u8, options: LabelOptions) void {
     self.end(options.background, .black, .black);
 }
 
-const ButtonOptions = struct {
+pub const ButtonOptions = struct {
     background: rl.Color = .gray,
     border: f32 = Style.border,
     border_color: rl.Color = Style.border_color,
@@ -251,12 +262,24 @@ const ButtonOptions = struct {
     font_size: i32 = 20,
 };
 
-pub fn button(text: [:0]const u8, options: ButtonOptions) bool {
+pub fn button(text: []const u8, options: ButtonOptions) bool {
+    const index = getIndex();
+    const is_selected = isActive(index);
+
+    var border = options.border;
+    var padding = options.padding;
+
+    if (is_selected) {
+        if (border == 0) border = 2;
+    } else {
+        if (border == 0) padding += 2;
+    }
+
     var self = Label.start(
         text,
         options.width,
-        options.padding,
-        options.border,
+        padding,
+        border,
         options.font_size,
         options.child_gap,
     );
@@ -272,9 +295,6 @@ pub fn button(text: [:0]const u8, options: ButtonOptions) bool {
         }
     }
 
-    const index = getIndex();
-    const is_selected = isActive(index);
-
     if (is_selected) {
         if (enter_down) {
             background = .dark_gray;
@@ -283,10 +303,20 @@ pub fn button(text: [:0]const u8, options: ButtonOptions) bool {
         }
     }
 
-    const border_color: rl.Color = if (is_selected) .blue else options.border_color;
+    const border_color: rl.Color = if (is_selected) Style.active else options.border_color;
     self.end(background, .black, border_color);
     return click;
 }
 
 pub const input = @import("input.zig").input;
 pub const Text = @import("input.zig").Text;
+
+pub fn getCharWidth(comptime T: type, font: rl.Font, codepoint: T) f32 {
+    const c: i32 = switch (T) {
+        i32 => codepoint,
+        u8 => @intCast(codepoint),
+        else => unreachable,
+    };
+    const info = rl.getGlyphInfo(font, c);
+    return cast(f32, info.image.width) * cast(f32, Style.font_size) / cast(f32, font.baseSize);
+}

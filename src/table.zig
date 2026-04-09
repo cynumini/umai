@@ -11,7 +11,7 @@ pub fn table(rect: rl.Rectangle, state: *State) !void {
     var cells_widths: [4]i32 = .{ 0, 0, 0, 0 };
     for (state.foods_str.items) |food| {
         for (food, 0..) |cell, i| {
-            cells_widths[i] = @max(cells_widths[i], rl.measureText(cell, Style.font_size));
+            cells_widths[i] = @max(cells_widths[i], rl.measureText(u8, cell, Style.font_size));
         }
     }
     var rectangle: rl.Rectangle = .{
