@@ -111,8 +111,17 @@ pub const Edit = struct {
     }
 };
 
+pub const Main = struct {
+    index: ?usize,
+
+    pub fn setIndex(self: *Main, index: ?usize) void {
+        self.index = index;
+        std.debug.print("trigger = {?}\n", .{index});
+    }
+};
+
 const Tab = union(enum) {
-    main: void,
+    main: Main,
     new_food: Edit,
 
     pub fn deinit(self: *Tab, allocator: std.mem.Allocator) void {
@@ -125,7 +134,6 @@ const Tab = union(enum) {
 
 edit: Edit,
 database: Database,
-table_current_row: ?usize,
 foods_str: std.ArrayList([4][:0]const u8),
 foods: std.ArrayList(Food),
 tabs: std.ArrayList(Tab),
@@ -136,13 +144,12 @@ pub fn init(allocator: std.mem.Allocator, io: std.Io) !Self {
         .edit = try .init(allocator),
         .tabs = .empty,
         .database = try .init(io),
-        .table_current_row = null,
         .foods_str = .empty,
         .foods = .empty,
         .current_tab = 0,
     };
 
-    try self.tabs.append(allocator, .{ .main = {} });
+    try self.tabs.append(allocator, .{ .main = .{ .index = null } });
 
     return self;
 }

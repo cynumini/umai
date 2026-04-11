@@ -45,30 +45,31 @@ fn uiTabs(rect: rl.Rectangle, state: *State) !void {
     }
 }
 
-fn uiTabMain(allocator: std.mem.Allocator, rect: rl.Rectangle, state: *State) !void {
-    const old_index = state.table_current_row;
+fn uiTabMain(allocator: std.mem.Allocator, rect: rl.Rectangle, state: *State, tab: *State.Main) !void {
+    _ = allocator;
+    // const old_index = tab.index;
     try table.table(.{
         .x = rect.x,
         .y = rect.y,
         .width = rect.width / 2,
         .height = rect.height,
-    }, state);
+    }, state, tab);
 
-    if (old_index != state.table_current_row) {
-        if (state.table_current_row) |i| {
-            try state.edit.name.set(allocator, state.foods_str.items[i + 1][2]);
-            try state.edit.energy.set(allocator, state.foods_str.items[i + 1][3]);
-        }
-    }
+    // if (old_index != state.table_current_row) {
+    //     if (state.table_current_row) |i| {
+    //         try state.edit.name.set(allocator, state.foods_str.items[i + 1][2]);
+    //         try state.edit.energy.set(allocator, state.foods_str.items[i + 1][3]);
+    //     }
+    // }
 
-    if (state.table_current_row != null) {
-        try uiEditPanel(allocator, .{
-            .x = rect.x + rect.width / 2,
-            .y = rect.y,
-            .width = rect.width / 2,
-            .height = rect.height,
-        }, state);
-    }
+    // if (state.table_current_row != null) {
+    //     try uiEditPanel(allocator, .{
+    //         .x = rect.x + rect.width / 2,
+    //         .y = rect.y,
+    //         .width = rect.width / 2,
+    //         .height = rect.height,
+    //     }, state);
+    // }
 }
 
 fn uiTabNewFood(
@@ -120,7 +121,7 @@ fn uiTabNewFood(
 fn uiTab(allocator: std.mem.Allocator, io: std.Io, rect: rl.Rectangle, state: *State) !void {
     rect.draw(Style.background);
     switch (state.tabs.items[state.current_tab]) {
-        .main => try uiTabMain(allocator, rect, state),
+        .main => |*tab| try uiTabMain(allocator, rect, state, tab),
         .new_food => |*tab| try uiTabNewFood(allocator, io, rect, state, tab),
     }
 }

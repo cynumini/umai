@@ -7,7 +7,7 @@ const State = @import("state.zig");
 const ui = @import("ui.zig");
 const Style = ui.Style;
 
-pub fn table(rect: rl.Rectangle, state: *State) !void {
+pub fn table(rect: rl.Rectangle, state: *State, main: *State.Main) !void {
     var cells_widths: [4]i32 = .{ 0, 0, 0, 0 };
     for (state.foods_str.items) |food| {
         for (food, 0..) |cell, i| {
@@ -26,7 +26,7 @@ pub fn table(rect: rl.Rectangle, state: *State) !void {
 
     const row_height = Style.font_size + Style.padding * 2 + Style.margin;
 
-    if (state.table_current_row) |current| {
+    if (main.index) |current| {
         const selected_background = rl.Rectangle{
             .x = rectangle.x,
             .y = rectangle.y + row_height + (row_height * cast(f32, current)),
@@ -76,10 +76,11 @@ pub fn table(rect: rl.Rectangle, state: *State) !void {
     rectangle.drawLines(Style.border, border_color);
 
     if (ui.onMousePressed(rectangle)) {
-        const relative = ui.mouse_position.subtract(rectangle.toVector2());
-        const i: usize = @intFromFloat(relative.y / row_height);
-        if (i > 0) {
-            state.table_current_row = i - 1;
+        var relative = ui.mouse_position.subtract(rectangle.toVector2());
+        relative.y -= row_height;
+        if (relative.y >= 0) {
+            const i: usize = @intFromFloat(relative.y / row_height);
+            main.setIndex(i);
             ui.activate(index);
         }
     }
@@ -88,16 +89,16 @@ pub fn table(rect: rl.Rectangle, state: *State) !void {
         const move = @as(isize, @intFromBool(ui.down_pressed)) - @as(isize, @intFromBool(ui.up_pressed));
         const max_index = state.foods_str.items.len - 1;
         if (move != 0) {
-            if (state.table_current_row) |value| {
-                state.table_current_row = @intCast(std.math.clamp(
+            if (main.index) |value| {
+                main.setIndex(@intCast(std.math.clamp(
                     cast(isize, value) + move,
                     0,
                     max_index - 1,
-                ));
+                )));
             } else {
-                state.table_current_row = 0;
+                main.setIndex(0);
             }
         }
-        if (ui.escape_pressed) state.table_current_row = null;
+        if (ui.escape_pressed) main.setIndex(null);
     }
 }
