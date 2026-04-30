@@ -1,6 +1,0 @@
--Wall
--Wpedantic
--Wextra
--Werror
--Wconversion
--std=c23
