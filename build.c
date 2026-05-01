@@ -1,3 +1,4 @@
+#define DEBUG
 #define SKN_BUILD_IMPLEMENTATION
 #include "build.h"
 
