@@ -22,4 +22,6 @@ typedef struct                \
     (ARRAY)->len++;                                                                           \
 } while(0)
 
+#define foreach(TYPE, ITEM, DA) for (TYPE *ITEM = (DA)->data; ITEM < (DA)->data + (DA)->len; ++ITEM)
+
 #endif // SKN_DN

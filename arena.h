@@ -23,7 +23,10 @@ typedef struct
 } Arena;
 
 Arena
-create_arena(size_t size);
+alloc_arena(size_t size);
+
+Arena
+create_arena(void *ptr, size_t size);
 
 void
 delete_arena(Arena arena);
@@ -47,9 +50,15 @@ arena_base_realloc(Arena *arena, void *ptr, size_t old_len, size_t new_len, size
 #include <string.h>
 
 Arena
-create_arena(size_t size)
+alloc_arena(size_t size)
 {
-    return (Arena){ .size = size, .data = malloc(size) };
+    return create_arena(malloc(size), size);
+}
+
+Arena
+create_arena(void *ptr, size_t size)
+{
+    return (Arena){ .size = size, .data = ptr };
 }
 
 void
@@ -96,4 +105,5 @@ arena_base_realloc(Arena *arena, void *ptr, size_t old_len, size_t new_len, size
     return new_ptr;
 }
 #endif // SKN_ARENA_IMPLEMENTATION
+
 #endif // SKN_ARENA_H
